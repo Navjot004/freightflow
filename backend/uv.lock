@@ -537,6 +537,7 @@ dependencies = [
     { name = "httpx" },
     { name = "passlib", extra = ["bcrypt"] },
     { name = "pillow" },
+    { name = "psycopg2-binary" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
@@ -557,9 +558,6 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "watchfiles" },
 ]
-postgres = [
-    { name = "psycopg2-binary" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -571,7 +569,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "pillow", specifier = ">=12.3.0" },
-    { name = "psycopg2-binary", marker = "extra == 'postgres'", specifier = ">=2.9.0" },
+    { name = "psycopg2-binary", specifier = ">=2.9.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1.1" },
@@ -588,7 +586,7 @@ requires-dist = [
     { name = "watchfiles", marker = "extra == 'dev'", specifier = ">=1.2.0" },
     { name = "websockets", specifier = ">=16.0" },
 ]
-provides-extras = ["dev", "postgres"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "greenlet"
