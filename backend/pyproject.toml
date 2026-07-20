@@ -75,3 +75,6 @@ ignore = ["E501"]
 
 [tool.ruff.isort]
 known-first-party = ["app"]
+
+[tool.vercel]
+entrypoint = "app.main:app"
