@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@layer base {
+  :root {
+    /* Light Mode */
+    --background: 0 0% 100%; /* White */
+    --foreground: 221 39% 11%; /* Gray 900 */
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 221 39% 11%; /* Gray 900 */
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 39% 11%;
+    --primary: 221 39% 11%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 98%; /* Gray 50 */
+    --secondary-foreground: 221 39% 11%;
+    --muted: 210 40% 98%; /* Gray 50 */
+    --muted-foreground: 215 14% 34%; /* Gray 600 */
+    --accent: 210 40% 98%;
+    --accent-foreground: 221 39% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 220 14% 91%; /* Gray 200 */
+    --input: 220 14% 91%;
+    --ring: 221 39% 11%;
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    /* Dark Mode (Slate) */
+    --background: 229 84% 5%; /* Slate 950 */
+    --foreground: 210 40% 96%; /* Slate 100 */
+    --card: 222 47% 11%; /* Slate 900 */
+    --card-foreground: 210 40% 96%; /* Slate 100 */
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 229 84% 5%;
+    --secondary: 215 32% 17%; /* Slate 800 */
+    --secondary-foreground: 210 40% 96%;
+    --muted: 215 32% 17%; /* Slate 800 */
+    --muted-foreground: 215 20% 65%; /* Slate 400 */
+    --accent: 215 32% 17%; /* Slate 800 */
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 215 25% 27%; /* Slate 700 */
+    --input: 215 25% 27%;
+    --ring: 215 25% 27%;
+  }
+}
+ 
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}

@@ -1,0 +1,28 @@
+# Environment-specific configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and generated frontend assets
+node_modules/
+dist/
+build/
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime documents and user uploads
+backend/uploads/
+
+# Local databases and generated diagnostics
+*.db
+*.sqlite
+*.sqlite3
+lint_output.txt
+tempCodeRunnerFile.py
+
+# Local tooling
+.vscode/
