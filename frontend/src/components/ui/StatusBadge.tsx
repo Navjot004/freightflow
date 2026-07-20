@@ -1,4 +1,3 @@
-import React from 'react';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'destructive' | 'info' | 'outline';
 

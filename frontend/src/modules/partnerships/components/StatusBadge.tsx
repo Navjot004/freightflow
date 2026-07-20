@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckCircle, Clock, XCircle, AlertCircle, Link } from 'lucide-react';
 
 interface StatusBadgeProps {

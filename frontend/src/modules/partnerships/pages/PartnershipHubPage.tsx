@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../store/authStore';
 import { PartnershipAPI } from '../api';
-import { useToast } from '../../../components/ui/Toast';
 import { Users, UserPlus, ShieldCheck, CheckCircle } from 'lucide-react';
 
 import DiscoverPartnersTab from '../components/DiscoverPartnersTab';
@@ -12,8 +11,6 @@ import ConnectedPartnersTab from '../components/ConnectedPartnersTab';
 export default function PartnershipHubPage() {
   const user = useAuthStore(state => state.user);
   const isBroker = user?.company?.type === 'BROKER';
-  const { toast } = useToast();
-
   const [activeTab, setActiveTab] = useState(() => {
     const saved = localStorage.getItem('partnership_active_tab');
     if (saved) return saved;

@@ -3,7 +3,7 @@ import { getDrivers, createDriver, deactivateDriver, resetDriverPassword } from 
 import { useToast } from '../../../components/ui/Toast';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { Plus, Trash2, Key, Users } from 'lucide-react';
-import { Card, CardContent } from '../../../components/ui/Card';
+import { Card, CardContent } from '../../../components/ui/card';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -31,7 +31,6 @@ const DriverListPage = () => {
     action: 'deactivate' | 'reset_password' | null;
     driverId: string | null;
   }>({
-    isOpen: false,
     isOpen: false,
     action: null,
     driverId: null

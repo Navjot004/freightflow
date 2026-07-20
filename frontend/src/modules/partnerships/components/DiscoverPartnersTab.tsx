@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, MapPin, Truck, CheckCircle, Star, User, Building } from 'lucide-react';
 import { PartnershipAPI, type PartnerDirectoryItem } from '../api';
 import { useToast } from '../../../components/ui/Toast';
@@ -161,7 +161,7 @@ export default function DiscoverPartnersTab() {
                     <span className="text-muted-foreground flex items-center"><MapPin className="h-3.5 w-3.5 mr-1" /> Regions</span>
                     <span className="text-foreground font-medium truncate max-w-[100px]" title={partner.company.type === 'CARRIER' ? partner.profile?.operating_regions?.join(', ') : 'National'}>
                       {partner.company.type === 'CARRIER' 
-                        ? (partner.profile?.operating_regions?.[0] || 'National') + (partner.profile?.operating_regions?.length > 1 ? '...' : '')
+                        ? (partner.profile?.operating_regions?.[0] || 'National') + ((partner.profile?.operating_regions?.length ?? 0) > 1 ? '...' : '')
                         : 'National'
                       }
                     </span>

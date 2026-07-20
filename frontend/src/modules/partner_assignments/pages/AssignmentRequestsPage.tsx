@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PartnerAssignmentAPI, type AssignmentResponse } from '../api';
-import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { useToast } from '../../../components/ui/Toast';
 import { Check, X, Truck } from 'lucide-react';

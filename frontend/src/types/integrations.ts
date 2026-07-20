@@ -1,8 +1,10 @@
-export enum WebhookStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  FAILED = 'FAILED',
-}
+export const WebhookStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  FAILED: 'FAILED',
+} as const;
+
+export type WebhookStatus = (typeof WebhookStatus)[keyof typeof WebhookStatus];
 
 export interface ApiKey {
   id: string;

@@ -1,7 +1,6 @@
-import React from 'react';
 import { X, MapPin, Truck, Star, FileText, Activity, Building, User } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
-import type { PartnerDirectoryItem, Company } from '../api';
+import type { PartnerDirectoryItem } from '../api';
 
 interface ProfileDrawerProps {
   isOpen: boolean;

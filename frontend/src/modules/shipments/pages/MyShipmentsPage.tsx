@@ -68,7 +68,7 @@ export default function MyShipmentsPage() {
   
   // File Upload State for BOL
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadDocType, setUploadDocType] = useState<'bol'>('bol');
+  const uploadDocType = 'bol';
   const [uploadShipmentId, setUploadShipmentId] = useState<string>('');
 
   // POD Modal State

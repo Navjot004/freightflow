@@ -1,12 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShipmentAPI } from '../api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
-import { Label } from '../../../components/ui/label';
 import { MapPin, Navigation, Upload, CheckCircle, Clock, Calendar, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../../components/ui/Toast';
 import { useAuthStore } from '../../../store/authStore';
@@ -27,7 +26,6 @@ export default function ShipmentExecutionPage() {
   const user = useAuthStore(state => state.user);
   const isDriver = user?.role?.name === 'DRIVER';
   const isOwnerOperator = user?.company?.type === 'OWNER_OPERATOR';
-  const isCarrier = user?.company?.type === 'CARRIER';
   const canUploadPOD = isDriver || isOwnerOperator;
   
   const [currentLocation, setCurrentLocation] = useState('');

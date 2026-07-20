@@ -1,17 +1,21 @@
-export enum InvoiceStatus {
-  DRAFT = 'DRAFT',
-  ISSUED = 'ISSUED',
-  PAID = 'PAID',
-  OVERDUE = 'OVERDUE',
-  VOID = 'VOID',
-}
+export const InvoiceStatus = {
+  DRAFT: 'DRAFT',
+  ISSUED: 'ISSUED',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE',
+  VOID: 'VOID',
+} as const;
 
-export enum SettlementStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  PAID = 'PAID',
-  DISPUTED = 'DISPUTED',
-}
+export type InvoiceStatus = (typeof InvoiceStatus)[keyof typeof InvoiceStatus];
+
+export const SettlementStatus = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  PAID: 'PAID',
+  DISPUTED: 'DISPUTED',
+} as const;
+
+export type SettlementStatus = (typeof SettlementStatus)[keyof typeof SettlementStatus];
 
 export interface FinancialAccount {
   id: string;

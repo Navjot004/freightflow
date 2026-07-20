@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../../core/api';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Card, CardContent } from '../../../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { Button } from '../../../components/ui/button';
 import { Skeleton } from '../../../components/ui/Skeleton';
@@ -58,7 +58,7 @@ export default function DisputesManagement() {
                 <TableHead>Against</TableHead>
                 <TableHead>Reason</TableHead>
                 <TableHead>Status</TableHead>
-                {user?.role === 'SUPER_ADMIN' && <TableHead className="text-right">Actions</TableHead>}
+                {user?.role?.name === 'SUPER_ADMIN' && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -85,7 +85,7 @@ export default function DisputesManagement() {
                       <TableCell>
                         <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">{d.status}</span>
                       </TableCell>
-                      {user?.role === 'SUPER_ADMIN' && (
+                      {user?.role?.name === 'SUPER_ADMIN' && (
                         <TableCell className="text-right">
                           {d.status === 'OPEN' && resolvingId !== d.id && (
                             <Button size="sm" onClick={() => setResolvingId(d.id)}>Resolve</Button>

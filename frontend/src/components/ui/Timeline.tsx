@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckCircle } from 'lucide-react';
 
 export interface TimelineStep {
@@ -29,8 +28,6 @@ export function Timeline({ steps, currentStepId }: TimelineProps) {
         {steps.map((step, idx) => {
           const isCompleted = currentIndex > -1 && idx < currentIndex;
           const isCurrent = currentIndex > -1 && idx === currentIndex;
-          const isPending = currentIndex === -1 || idx > currentIndex;
-
           return (
             <div key={step.id} className="flex flex-col items-center group relative z-10 w-16 group bg-card">
               {/* Tooltip */}

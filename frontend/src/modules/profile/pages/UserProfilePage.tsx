@@ -7,11 +7,12 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Button } from '../../../components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs';
-import { Skeleton } from '../../../components/ui/skeleton';
+import { Skeleton } from '../../../components/ui/Skeleton';
 
 export default function UserProfilePage() {
   const user = useAuthStore(state => state.user);
-  const checkAuth = useAuthStore(state => state.checkAuth);
+  const token = useAuthStore(state => state.token);
+  const login = useAuthStore(state => state.login);
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState('personal');
@@ -108,10 +109,12 @@ export default function UserProfilePage() {
 
   const handleSavePersonal = async () => {
     try {
-      await api.put('/auth/me', personalFormData);
+      const res = await api.put('/auth/me', personalFormData);
       toast('Profile updated successfully', 'success');
       setIsEditingPersonal(false);
-      checkAuth(); // Refresh user state in the store
+      if (token) {
+        login(token, res.data);
+      }
     } catch (error: any) {
       toast(error.response?.data?.detail || 'Failed to update profile', 'error');
     }

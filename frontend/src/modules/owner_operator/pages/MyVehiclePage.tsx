@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../../core/api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { Truck, Shield, Calendar, Settings, Activity } from 'lucide-react';
+import { Truck, Shield, Calendar, Activity } from 'lucide-react';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useToast } from '../../../components/ui/Toast';
 

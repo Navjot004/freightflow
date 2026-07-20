@@ -1,17 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../../core/api';
-import { useAuthStore } from '../../../store/authStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { Skeleton } from '../../../components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { useToast } from '../../../components/ui/Toast';
 
 export default function CompanySettingsPage() {
-  const user = useAuthStore(state => state.user);
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('team');
   

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../../store/authStore';
 import { PartnershipAPI, type PartnershipResponse } from '../api';
 import { useToast } from '../../../components/ui/Toast';

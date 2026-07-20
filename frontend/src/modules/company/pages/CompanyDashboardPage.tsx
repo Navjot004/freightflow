@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../../../core/api';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Users, AlertCircle, CheckCircle2, Truck, Package, DollarSign, Activity } from 'lucide-react';
@@ -221,7 +221,7 @@ export default function CompanyDashboardPage() {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {stats.load_status_distribution.map((entry, index) => (
+                      {stats.load_status_distribution.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>

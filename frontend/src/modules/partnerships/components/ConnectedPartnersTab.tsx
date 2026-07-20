@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../../store/authStore';
-import { PartnershipAPI, type PartnerDirectoryItem, type PartnershipResponse } from '../api';
+import { PartnershipAPI, type PartnerDirectoryItem } from '../api';
 import { useToast } from '../../../components/ui/Toast';
 import { Button } from '../../../components/ui/button';
 import { Skeleton } from '../../../components/ui/Skeleton';

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { Bell, Check, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useNotificationStore, getEntityTypesForRoute } from '../../store/notificationStore';

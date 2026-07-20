@@ -1,4 +1,3 @@
-import React from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import LoginPage from '../modules/auth/pages/LoginPage';
