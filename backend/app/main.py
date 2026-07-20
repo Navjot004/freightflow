@@ -77,8 +77,16 @@ app.include_router(compliance_router, prefix=f"{settings.API_V1_STR}/compliance"
 app.include_router(integrations_router, prefix=f"{settings.API_V1_STR}/integrations", tags=["integrations"])
 app.include_router(websockets_router, prefix="/ws", tags=["websockets"])
 
-os.makedirs("uploads", exist_ok=True)
-app.mount(f"{settings.API_V1_STR}/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Vercel serverless filesystem is read-only except for /tmp
+UPLOAD_DIR = "/tmp/uploads"
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+app.mount(
+    f"{settings.API_V1_STR}/uploads",
+    StaticFiles(directory=UPLOAD_DIR),
+    name="uploads"
+)
 
 @app.get("/")
 def root():
