@@ -9,10 +9,18 @@ description = "FreightFlow - Freight Management Platform Backend API"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
+
 authors = [
     { name = "FreightFlow Team" }
 ]
-keywords = ["freight", "logistics", "fastapi", "trucking", "tms"]
+
+keywords = [
+    "freight",
+    "logistics",
+    "fastapi",
+    "trucking",
+    "tms"
+]
 
 dependencies = [
     "fastapi>=0.139.0",
@@ -43,13 +51,10 @@ dev = [
     "pytest-asyncio",
     "watchfiles>=1.2.0",
 ]
+
 postgres = [
     "psycopg2-binary>=2.9.0",
 ]
-
-[project.scripts]
-start = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
-dev   = "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -58,6 +63,7 @@ include = ["app*"]
 # ---------------------------------------------------------------------------
 # Pytest
 # ---------------------------------------------------------------------------
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
@@ -65,8 +71,9 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 
 # ---------------------------------------------------------------------------
-# Ruff (linter / formatter — optional, install with: pip install ruff)
+# Ruff
 # ---------------------------------------------------------------------------
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
