@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "freightflow-backend"
+version = "0.1.0"
+description = "FreightFlow - Freight Management Platform Backend API"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "FreightFlow Team" }
+]
+keywords = ["freight", "logistics", "fastapi", "trucking", "tms"]
+
+dependencies = [
+    "fastapi>=0.139.0",
+    "uvicorn[standard]>=0.51.0",
+    "sqlalchemy>=2.0.51",
+    "alembic>=1.18.5",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "python-dotenv>=1.2.2",
+    "python-jose[cryptography]>=3.5.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.32",
+    "email-validator>=2.3.0",
+    "redis>=8.0.1",
+    "celery>=5.6.3",
+    "APScheduler>=3.11.3",
+    "httpx>=0.28.1",
+    "reportlab>=5.0.0",
+    "pillow>=12.3.0",
+    "python-json-logger>=4.1.0",
+    "requests>=2.34.2",
+    "websockets>=16.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio",
+    "watchfiles>=1.2.0",
+]
+postgres = [
+    "psycopg2-binary>=2.9.0",
+]
+
+[project.scripts]
+start = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+dev   = "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# ---------------------------------------------------------------------------
+# Ruff (linter / formatter — optional, install with: pip install ruff)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.isort]
+known-first-party = ["app"]
