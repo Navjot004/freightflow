@@ -10,7 +10,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./freightflow.db"
     REDIS_URL: str = "redis://localhost:6379/0"
     LOG_LEVEL: str = "INFO"
-    BACKEND_CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    BACKEND_CORS_ORIGINS: str = (
+    "http://localhost:5173,"
+    "http://127.0.0.1:5173,"
+    "https://freightflow-opal.vercel.app"
+)
 
     @property
     def cors_origins(self) -> list[str]:
