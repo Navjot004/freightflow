@@ -35,42 +35,6 @@ export default function PendingRequestsTab() {
     } finally {
       setLoading(false);
     }
-import { useAuthStore } from '../../../store/authStore';
-import { PartnershipAPI, type PartnershipResponse } from '../api';
-import { useToast } from '../../../components/ui/Toast';
-import { Button } from '../../../components/ui/button';
-import { Skeleton } from '../../../components/ui/Skeleton';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { Send, Clock, X } from 'lucide-react';
-import { StatusBadge } from './StatusBadge';
-import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
-
-export default function PendingRequestsTab() {
-  const [requests, setRequests] = useState<PartnershipResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    id: string | null;
-    companyName: string;
-  }>({
-    isOpen: false,
-    id: null,
-    companyName: ''
-  });
-  const { toast } = useToast();
-  const user = useAuthStore(state => state.user);
-
-  const fetchRequests = async () => {
-    try {
-      const data = await PartnershipAPI.getRequests();
-      // Filter for requests sent BY the current user's company and are PENDING
-      const sentPending = data.filter(r => r.broker_company_id === user?.company_id && r.status === 'PENDING');
-      setRequests(sentPending);
-    } catch (error) {
-      toast('Failed to load pending requests', 'error');
-    } finally {
-      setLoading(false);
-    }
   };
 
   useEffect(() => {

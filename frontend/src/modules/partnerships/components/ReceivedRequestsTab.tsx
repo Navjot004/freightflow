@@ -36,43 +36,6 @@ export default function ReceivedRequestsTab() {
     } finally {
       setLoading(false);
     }
-import { useAuthStore } from '../../../store/authStore';
-import { PartnershipAPI, type PartnershipResponse } from '../api';
-import { useToast } from '../../../components/ui/Toast';
-import { Button } from '../../../components/ui/button';
-import { Skeleton } from '../../../components/ui/Skeleton';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { Inbox, Check, X, Star } from 'lucide-react';
-import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
-
-export default function ReceivedRequestsTab() {
-  const [requests, setRequests] = useState<PartnershipResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    action: 'accept' | 'reject' | null;
-    id: string | null;
-    companyName: string;
-  }>({
-    isOpen: false,
-    action: null,
-    id: null,
-    companyName: ''
-  });
-  const { toast } = useToast();
-  const user = useAuthStore(state => state.user);
-
-  const fetchRequests = async () => {
-    try {
-      const data = await PartnershipAPI.getRequests();
-      // Filter for requests sent TO the current user's company and are PENDING
-      const receivedPending = data.filter(r => r.partner_company_id === user?.company_id && r.status === 'PENDING');
-      setRequests(receivedPending);
-    } catch (error) {
-      toast('Failed to load received requests', 'error');
-    } finally {
-      setLoading(false);
-    }
   };
 
   useEffect(() => {

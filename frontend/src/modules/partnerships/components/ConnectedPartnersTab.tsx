@@ -35,40 +35,6 @@ export default function ConnectedPartnersTab() {
     } finally {
       setLoading(false);
     }
-import { useToast } from '../../../components/ui/Toast';
-import { Button } from '../../../components/ui/button';
-import { Skeleton } from '../../../components/ui/Skeleton';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { Network, Star, Truck, ShieldCheck, MapPin, Building, Search, XCircle, User } from 'lucide-react';
-import { Input } from '../../../components/ui/input';
-import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
-
-export default function ConnectedPartnersTab() {
-  const [partners, setPartners] = useState<PartnerDirectoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    id: string | null;
-    companyName: string;
-  }>({
-    isOpen: false,
-    id: null,
-    companyName: ''
-  });
-  const { toast } = useToast();
-  const user = useAuthStore(state => state.user);
-  const isBroker = user?.company?.type === 'BROKER';
-
-  const fetchPartners = async () => {
-    try {
-      const data = await PartnershipAPI.getNetwork();
-      setPartners(data);
-    } catch (error) {
-      toast('Failed to load connected partners', 'error');
-    } finally {
-      setLoading(false);
-    }
   };
 
   useEffect(() => {
