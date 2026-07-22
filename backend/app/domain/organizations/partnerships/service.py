@@ -22,17 +22,19 @@ def ensure_carrier_profile(db: Session, company_id: str):
         db.refresh(profile)
     return profile
 
-def get_carrier_directory(db: Session, broker_id: str = None):
-    # Only return verified partners (Carrier or Owner Operator)
+def get_carrier_directory(db: Session, current_company_id: str = None):
+    # Only return verified partners (Carrier or Owner Operator or Broker)
     from sqlalchemy import or_
+    from app.domain.identity.models import User, Role
     partners = db.query(Company).filter(
         or_(Company.type == CompanyType.CARRIER, Company.type == CompanyType.OWNER_OPERATOR, Company.type == CompanyType.BROKER),
-        Company.status == VerificationStatus.VERIFIED
+        Company.status == VerificationStatus.VERIFIED,
+        ~Company.users.any(User.role.has(Role.name == "SUPER_ADMIN"))
     ).all()
     
     # Filter out the current user's company
-    if broker_id:
-        partners = [p for p in partners if p.id != broker_id]
+    if current_company_id:
+        partners = [p for p in partners if p.id != current_company_id]
     
     directory = []
     for partner in partners:
@@ -51,8 +53,8 @@ def get_carrier_directory(db: Session, broker_id: str = None):
         
         status = None
         partnership_id = None
-        if broker_id:
-            pship = partnership_repository.get_any_direction(db=db, company_a=broker_id, company_b=partner.id)
+        if current_company_id:
+            pship = partnership_repository.get_any_direction(db=db, company_a=current_company_id, company_b=partner.id)
             if pship:
                 status = pship.status
                 partnership_id = pship.id

@@ -49,16 +49,17 @@ const DriverListPage = () => {
         try {
           const res = await api.get('/companies/me/employees');
           employeesData = res.data;
-        } catch (err) {
+        } catch (err: any) {
           console.error("Failed to fetch employees", err);
+          showToast(`Failed to load dispatchers: ${err.message}`, 'error');
         }
       }
 
       const data = await getDrivers();
       setDrivers(data);
 
-      if (employeesData && employeesData.team_members) {
-        setDispatchers(employeesData.team_members.filter((m: any) => m.role?.name === 'DISPATCHER'));
+      if (Array.isArray(employeesData)) {
+        setDispatchers(employeesData.filter((m: any) => m.role?.name === 'DISPATCHER'));
       }
     } catch (error) {
       showToast('Failed to load drivers', 'error');
@@ -317,7 +318,7 @@ const DriverListPage = () => {
                     >
                       <option value="unassigned">Unassigned (Assign later)</option>
                       {dispatchers.map(d => (
-                        <option key={d.user_id} value={d.user_id}>
+                        <option key={d.id} value={d.id}>
                           {d.first_name} {d.last_name} ({d.email})
                         </option>
                       ))}
@@ -376,7 +377,7 @@ const DriverListPage = () => {
                   >
                     <option value="unassigned">Unassigned</option>
                     {dispatchers.map(d => (
-                      <option key={d.user_id} value={d.user_id}>
+                      <option key={d.id} value={d.id}>
                         {d.first_name} {d.last_name}
                       </option>
                     ))}

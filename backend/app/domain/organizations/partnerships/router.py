@@ -11,9 +11,7 @@ router = APIRouter()
 
 @router.get("/transportation-partners", response_model=List[PartnerDirectoryItem])
 def get_directory(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    # If the user is a broker, we pass their company id to get connection statuses
-    broker_id = current_user.company_id if current_user.company.type == CompanyType.BROKER else None
-    return service.get_carrier_directory(db, broker_id=broker_id)
+    return service.get_carrier_directory(db, current_company_id=current_user.company_id)
 
 @router.post("/transportation-partnerships/request", response_model=PartnershipResponse)
 def request_partnership(

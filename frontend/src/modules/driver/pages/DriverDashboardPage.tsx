@@ -16,6 +16,7 @@ const DriverDashboardPage = () => {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
   const { toast: showToast } = useToast();
   const navigate = useNavigate();
 
@@ -40,28 +41,36 @@ const DriverDashboardPage = () => {
   }, []);
 
   const handleAccept = async (assignmentId: string) => {
+    if (isSubmitting[assignmentId]) return;
+    setIsSubmitting(prev => ({ ...prev, [assignmentId]: true }));
     try {
       await acceptAssignment(assignmentId);
       showToast('Assignment accepted', 'success');
       fetchDashboardData();
     } catch (error) {
       showToast('Failed to accept assignment', 'error');
+    } finally {
+      setIsSubmitting(prev => ({ ...prev, [assignmentId]: false }));
     }
   };
 
   const handleReject = async (assignmentId: string) => {
+    if (isSubmitting[assignmentId]) return;
     const reason = window.prompt("Please provide a reason for rejecting this assignment:");
     if (reason === null) return;
     if (reason.trim() === '') {
       showToast('You must provide a reason for rejection.', 'error');
       return;
     }
+    setIsSubmitting(prev => ({ ...prev, [assignmentId]: true }));
     try {
       await rejectAssignment(assignmentId, reason);
       showToast('Assignment rejected', 'success');
       fetchDashboardData();
     } catch (error) {
       showToast('Failed to reject assignment', 'error');
+    } finally {
+      setIsSubmitting(prev => ({ ...prev, [assignmentId]: false }));
     }
   };
 
@@ -207,11 +216,11 @@ const DriverDashboardPage = () => {
                       </div>
                     )}
                     <div className="flex gap-4">
-                      <Button onClick={() => handleAccept(a.id)} className="bg-green-600 hover:bg-green-700">
-                        <Check className="w-4 h-4 mr-2" /> Accept
+                      <Button onClick={() => handleAccept(a.id)} className="bg-green-600 hover:bg-green-700" disabled={isSubmitting[a.id]}>
+                        <Check className="w-4 h-4 mr-2" /> {isSubmitting[a.id] ? 'Accepting...' : 'Accept'}
                       </Button>
-                      <Button onClick={() => handleReject(a.id)} variant="destructive">
-                        <X className="w-4 h-4 mr-2" /> Reject
+                      <Button onClick={() => handleReject(a.id)} variant="destructive" disabled={isSubmitting[a.id]}>
+                        <X className="w-4 h-4 mr-2" /> {isSubmitting[a.id] ? 'Rejecting...' : 'Reject'}
                       </Button>
                     </div>
                   </div>

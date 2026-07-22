@@ -65,6 +65,8 @@ export default function MyShipmentsPage() {
     action: null,
     shipmentId: null
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // File Upload State for BOL
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -106,9 +108,10 @@ export default function MyShipmentsPage() {
     }
   }, [isBroker, user, isCarrier]);
 
-  const handleAssignDriver = async (e: React.FormEvent) => {
+  const handleAssignDriverSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDriverId) return;
+    if (!selectedDriverId || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await api.post(`/shipments/${assignDriverShipment.id}/assign-fleet-driver`, {
         driver_id: selectedDriverId,
@@ -119,6 +122,8 @@ export default function MyShipmentsPage() {
       fetchShipments();
     } catch (err: any) {
       toast(err.response?.data?.detail || 'Failed to assign driver', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -134,19 +139,26 @@ export default function MyShipmentsPage() {
 
   const handleAssignPartnerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPartner) return;
+    if (!selectedPartner || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await PartnerAssignmentAPI.assignPartner(assignPartnerShipment.id, selectedPartner, assignmentNotes);
       toast('Partner assigned successfully. Waiting for their acceptance.', 'success');
       setAssignPartnerShipment(null);
+      setSelectedPartner('');
+      setAssignmentNotes('');
       fetchShipments();
     } catch (err: any) {
       toast(err.response?.data?.detail || 'Failed to assign partner', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleAssignDispatcherSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await ShipmentAPI.assignDispatcher(assignDispatcherShipment.id, selectedDispatcherId || null);
       toast('Dispatcher assigned successfully.', 'success');
@@ -154,6 +166,8 @@ export default function MyShipmentsPage() {
       fetchShipments();
     } catch (err: any) {
       toast(err.response?.data?.detail || 'Failed to assign dispatcher', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -169,6 +183,8 @@ export default function MyShipmentsPage() {
 
   const handleUpdateLocation = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await api.post(`/shipments/${updateLocationShipment.id}/location`, {
         current_location: currentLocation
@@ -177,6 +193,8 @@ export default function MyShipmentsPage() {
       fetchShipments();
     } catch (err: any) {
       toast(err.response?.data?.detail || 'Failed to update location', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -382,7 +400,7 @@ export default function MyShipmentsPage() {
                         </Button>
                       )}
                       
-                      {s.load.status === 'TENDER_ACCEPTED' && isBroker && (
+                      {(s.load.status === 'OPEN_FOR_BIDDING' || s.load.status === 'DRAFT') && isBroker && (
                         <Button size="sm" onClick={() => handleOpenAssignPartner(s)}>
                           Assign Partner
                         </Button>
@@ -590,7 +608,7 @@ export default function MyShipmentsPage() {
                               Self Assign
                             </Button>
                           )}
-                          {s.load.status === 'TENDER_ACCEPTED' && isBroker && (
+                          {(s.load.status === 'OPEN_FOR_BIDDING' || s.load.status === 'DRAFT') && isBroker && (
                             <Button size="sm" onClick={() => handleOpenAssignPartner(s)}>
                               Assign Partner
                             </Button>
@@ -620,7 +638,7 @@ export default function MyShipmentsPage() {
               <CardTitle>Assign Driver</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleAssignDriver} className="space-y-4">
+              <form onSubmit={handleAssignDriverSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Select Driver</Label>
                   <select 
@@ -632,7 +650,7 @@ export default function MyShipmentsPage() {
                     <option value="">-- Select a Driver --</option>
                     {drivers.map(d => (
                       <option key={d.id} value={d.user_id} disabled={d.status !== 'AVAILABLE'}>
-                        {d.first_name} {d.last_name} ({d.status.replace('_', ' ')})
+                        {d.first_name} {d.last_name} {d.manager_name ? `(${d.manager_name})` : ''} - {d.status.replace('_', ' ')}
                       </option>
                     ))}
                   </select>
@@ -641,9 +659,13 @@ export default function MyShipmentsPage() {
                   <Label>Notes (Optional)</Label>
                   <Input value={driverAssignmentNotes} onChange={e => setDriverAssignmentNotes(e.target.value)} placeholder="Special instructions" />
                 </div>
-                <div className="flex justify-end space-x-2 pt-4 border-t">
-                  <Button type="button" variant="ghost" onClick={() => setAssignDriverShipment(null)}>Cancel</Button>
-                  <Button type="submit">Save</Button>
+                <div className="flex justify-end gap-3 mt-6">
+                  <Button type="button" variant="outline" onClick={() => setAssignDriverShipment(null)} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={!selectedDriverId || isSubmitting}>
+                    {isSubmitting ? 'Assigning...' : 'Assign Driver'}
+                  </Button>
                 </div>
               </form>
             </CardContent>
@@ -680,9 +702,13 @@ export default function MyShipmentsPage() {
                   <Label>Notes (Optional)</Label>
                   <Input value={assignmentNotes} onChange={e => setAssignmentNotes(e.target.value)} placeholder="Special instructions" />
                 </div>
-                <div className="flex justify-end space-x-2 pt-4 border-t">
-                  <Button type="button" variant="ghost" onClick={() => setAssignPartnerShipment(null)}>Cancel</Button>
-                  <Button type="submit" disabled={!selectedPartner}>Send Request</Button>
+                <div className="flex justify-end gap-3 mt-6">
+                  <Button type="button" variant="outline" onClick={() => setAssignPartnerShipment(null)} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={!selectedPartner || isSubmitting}>
+                    {isSubmitting ? 'Assigning...' : 'Assign Partner'}
+                  </Button>
                 </div>
               </form>
             </CardContent>
@@ -714,9 +740,13 @@ export default function MyShipmentsPage() {
                     ))}
                   </select>
                 </div>
-                <div className="flex justify-end space-x-2 pt-4 border-t">
-                  <Button type="button" variant="ghost" onClick={() => setAssignDispatcherShipment(null)}>Cancel</Button>
-                  <Button type="submit">Assign Load</Button>
+                <div className="flex justify-end gap-3 pt-4 border-t mt-6">
+                  <Button type="button" variant="outline" onClick={() => setAssignDispatcherShipment(null)} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Assigning...' : 'Assign Load'}
+                  </Button>
                 </div>
               </form>
             </CardContent>
@@ -738,9 +768,13 @@ export default function MyShipmentsPage() {
                   <Label>Current Location</Label>
                   <Input value={currentLocation} onChange={e => setCurrentLocation(e.target.value)} required placeholder="e.g. Memphis, TN" />
                 </div>
-                <div className="flex justify-end space-x-2 pt-4 border-t">
-                  <Button type="button" variant="ghost" onClick={() => setUpdateLocationShipment(null)}>Cancel</Button>
-                  <Button type="submit">Update</Button>
+                <div className="flex justify-end gap-3 pt-4 border-t mt-6">
+                  <Button type="button" variant="outline" onClick={() => setUpdateLocationShipment(null)} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={!currentLocation || isSubmitting}>
+                    {isSubmitting ? 'Updating...' : 'Update'}
+                  </Button>
                 </div>
               </form>
             </CardContent>

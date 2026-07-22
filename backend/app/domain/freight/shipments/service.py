@@ -303,10 +303,10 @@ def accept_driver_assignment(db: Session, assignment_id: str, driver_id: str):
     # Generate BOL
     generate_bol(db, shipment.id)
         
-    # Notify Assigner
+    # Notify Assigner's Company (the Carrier)
     create_notification(
         db, 
-        assignment.assigned_by, 
+        shipment.carrier_id, 
         "Driver Accepted Assignment", 
         f"Driver {user.first_name} {user.last_name} accepted the assignment.", 
         NotificationType.SUCCESS,
@@ -335,12 +335,16 @@ def reject_driver_assignment(db: Session, assignment_id: str, driver_id: str, re
     if reason:
         assignment.rejection_reason = reason
     
-    # Notify Assigner
+    # Notify Assigner's Company
     user = assignment.driver
     reason_text = f" Reason: {reason}" if reason else ""
+    
+    # We need the shipment to get carrier_id
+    shipment = shipment_repository.get(db=db, id=assignment.shipment_id)
+    
     create_notification(
         db, 
-        assignment.assigned_by, 
+        shipment.carrier_id if shipment else assignment.driver.company_id, 
         "Driver Rejected Assignment", 
         f"Driver {user.first_name} {user.last_name} rejected the assignment.{reason_text}", 
         NotificationType.WARNING,

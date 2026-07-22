@@ -35,23 +35,64 @@ export default function PendingRequestsTab() {
     } finally {
       setLoading(false);
     }
+import { useAuthStore } from '../../../store/authStore';
+import { PartnershipAPI, type PartnershipResponse } from '../api';
+import { useToast } from '../../../components/ui/Toast';
+import { Button } from '../../../components/ui/button';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { Send, Clock, X } from 'lucide-react';
+import { StatusBadge } from './StatusBadge';
+import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
+
+export default function PendingRequestsTab() {
+  const [requests, setRequests] = useState<PartnershipResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    id: string | null;
+    companyName: string;
+  }>({
+    isOpen: false,
+    id: null,
+    companyName: ''
+  });
+  const { toast } = useToast();
+  const user = useAuthStore(state => state.user);
+
+  const fetchRequests = async () => {
+    try {
+      const data = await PartnershipAPI.getRequests();
+      // Filter for requests sent BY the current user's company and are PENDING
+      const sentPending = data.filter(r => r.broker_company_id === user?.company_id && r.status === 'PENDING');
+      setRequests(sentPending);
+    } catch (error) {
+      toast('Failed to load pending requests', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchRequests();
   }, []);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const executeCancel = async () => {
-    if (!confirmModal.id) return;
+    if (!confirmModal.id || isSubmitting) return;
     const { id } = confirmModal;
-    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    setIsSubmitting(true);
     try {
       // Assuming removePartnership works as a cancellation for pending requests as well
       await PartnershipAPI.removePartnership(id);
       toast('Request cancelled successfully', 'info');
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
       fetchRequests();
     } catch (error: any) {
       toast(error.response?.data?.detail || 'Failed to cancel request', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -127,6 +168,7 @@ export default function PendingRequestsTab() {
         message={`Are you sure you want to cancel the partnership request to ${confirmModal.companyName}?`}
         confirmText="Cancel Request"
         variant="danger"
+        loading={isSubmitting}
       />
     </div>
   );

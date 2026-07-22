@@ -47,7 +47,7 @@ def create_driver(db: Session, current_user, driver_in: DriverCreate):
         license_number=driver_in.license_number,
         license_expiry=driver_in.license_expiry,
         status=DriverStatus.AVAILABLE,
-        manager_id=current_user.id if current_user.role.name == "DISPATCHER" else driver_in.manager_id
+        manager_id=current_user.id if current_user.role.name == "DISPATCHER" else (driver_in.manager_id if driver_in.manager_id != "unassigned" else None)
     )
     db.add(driver_profile)
     db.commit()

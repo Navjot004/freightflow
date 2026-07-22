@@ -112,24 +112,32 @@ export default function PartnershipHubPage() {
           </div>
         </div>
       </div>
-
       {/* Tabs */}
-      <div className="border-b border-border">
+      <div className="border-b border-border mt-6">
         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
+            
+            const hasNotification = 
+              (tab.id === 'pending' && stats.sent > 0) || 
+              (tab.id === 'received' && stats.received > 0);
+
             return (
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
                 className={`
-                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                  relative whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
                   ${isActive 
                     ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-400' 
                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300 dark:hover:border-slate-700'}
                 `}
               >
                 {tab.label}
+                {hasNotification && (
+                  <span className="absolute top-3 -right-2 flex h-2.5 w-2.5 rounded-full bg-red-500 shadow-sm shrink-0">
+                  </span>
+                )}
               </button>
             );
           })}

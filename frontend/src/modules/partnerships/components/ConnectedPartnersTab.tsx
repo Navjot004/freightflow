@@ -35,22 +35,61 @@ export default function ConnectedPartnersTab() {
     } finally {
       setLoading(false);
     }
+import { useToast } from '../../../components/ui/Toast';
+import { Button } from '../../../components/ui/button';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { EmptyState } from '../../../components/ui/EmptyState';
+import { Network, Star, Truck, ShieldCheck, MapPin, Building, Search, XCircle, User } from 'lucide-react';
+import { Input } from '../../../components/ui/input';
+import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
+
+export default function ConnectedPartnersTab() {
+  const [partners, setPartners] = useState<PartnerDirectoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    id: string | null;
+    companyName: string;
+  }>({
+    isOpen: false,
+    id: null,
+    companyName: ''
+  });
+  const { toast } = useToast();
+  const user = useAuthStore(state => state.user);
+  const isBroker = user?.company?.type === 'BROKER';
+
+  const fetchPartners = async () => {
+    try {
+      const data = await PartnershipAPI.getNetwork();
+      setPartners(data);
+    } catch (error) {
+      toast('Failed to load connected partners', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchPartners();
   }, []);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const executeRemove = async () => {
-    if (!confirmModal.id) return;
+    if (!confirmModal.id || isSubmitting) return;
     const { id } = confirmModal;
-    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    setIsSubmitting(true);
     try {
       await PartnershipAPI.removePartnership(id);
       toast('Partnership removed', 'success');
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
       fetchPartners();
     } catch (error: any) {
       toast(error.response?.data?.detail || 'Failed to remove partnership', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -203,9 +242,10 @@ export default function ConnectedPartnersTab() {
         onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
         onConfirm={executeRemove}
         title="Remove Partnership"
-        message={`Are you sure you want to end your partnership with ${confirmModal.companyName}?`}
-        confirmText="Remove"
+        message={`Are you sure you want to remove the partnership with ${confirmModal.companyName}? This action cannot be undone.`}
+        confirmText="Remove Partner"
         variant="danger"
+        loading={isSubmitting}
       />
     </div>
   );

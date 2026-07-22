@@ -245,6 +245,16 @@ def accept_invite(db: Session, accept_in: InviteAccept):
     
     db.commit()
     db.refresh(user)
+
+    if invite.role_name == "DRIVER":
+        from app.domain.fleet.drivers.models import DriverProfile, DriverStatus
+        driver_profile = DriverProfile(
+            user_id=user.id,
+            status=DriverStatus.AVAILABLE
+        )
+        db.add(driver_profile)
+        db.commit()
+
     return user
 
 def get_company_employees(db: Session, company_id: str):
@@ -279,6 +289,16 @@ def create_employee(db: Session, company_id: str, employee_in):
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    if employee_in.role_name == "DRIVER":
+        from app.domain.fleet.drivers.models import DriverProfile, DriverStatus
+        driver_profile = DriverProfile(
+            user_id=user.id,
+            status=DriverStatus.AVAILABLE
+        )
+        db.add(driver_profile)
+        db.commit()
+
     
     return {
         "message": "Employee created successfully",
