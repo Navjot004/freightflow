@@ -12,7 +12,7 @@ router = APIRouter()
 @router.post("", response_model=schemas.DisputeResponse)
 def create_dispute(
     dispute_in: schemas.DisputeCreate,
-    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER"])),
+    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER", "DRIVER", "OWNER_OPERATOR"])),
     db: Session = Depends(get_db)
 ):
     return service.create_dispute(db, dispute_in, current_user.company_id)

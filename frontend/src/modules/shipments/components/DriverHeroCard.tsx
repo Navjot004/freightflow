@@ -1,12 +1,13 @@
 import React from 'react';
 import { Button } from '../../../components/ui/button';
-import { Navigation, Phone, Clock, MapPin, ArrowRight, Camera, CheckCircle2 } from 'lucide-react';
+import { Navigation, Phone, Clock, MapPin, ArrowRight, Camera, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface DriverHeroCardProps {
   shipment: any;
   nextAction: { next: string; label: string } | null;
   onExecuteAction: (nextStatus: string) => void;
   onOpenPodModal: () => void;
+  onOpenDisputeModal?: () => void;
   isTracking: boolean;
   onToggleTracking?: () => void;
 }
@@ -16,6 +17,7 @@ export const DriverHeroCard: React.FC<DriverHeroCardProps> = ({
   nextAction,
   onExecuteAction,
   onOpenPodModal,
+  onOpenDisputeModal,
   isTracking
 }) => {
   const status = shipment?.status;
@@ -148,7 +150,32 @@ export const DriverHeroCard: React.FC<DriverHeroCardProps> = ({
         </div>
       )}
 
-      {status === 'POD_UPLOADED' ? (
+      {status === 'DISPUTED' ? (
+        <div className="mb-6 bg-red-500/10 border border-red-500/30 p-4 rounded-2xl space-y-3 text-red-300">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-6 h-6 text-red-400 shrink-0" />
+            <div>
+              <div className="font-semibold text-sm">POD Rejected / Shipment Disputed</div>
+              <div className="text-xs text-red-300/80">The Shipper rejected the uploaded Proof of Delivery or raised a dispute. Please select an action below:</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-red-500/20">
+            <Button
+              onClick={onOpenPodModal}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl h-11 flex items-center justify-center gap-2"
+            >
+              <Camera className="w-4 h-4" /> Re-upload POD
+            </Button>
+            <Button
+              onClick={onOpenDisputeModal}
+              variant="outline"
+              className="w-full border-red-400/40 text-red-300 hover:bg-red-500/20 font-bold text-xs rounded-xl h-11 flex items-center justify-center gap-2"
+            >
+              <AlertTriangle className="w-4 h-4" /> Raise Dispute
+            </Button>
+          </div>
+        </div>
+      ) : status === 'POD_UPLOADED' ? (
         <div className="mb-6 bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-center gap-3 text-amber-300">
           <Clock className="w-6 h-6 text-amber-400 shrink-0" />
           <div>

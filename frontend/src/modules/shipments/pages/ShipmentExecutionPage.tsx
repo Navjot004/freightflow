@@ -13,6 +13,7 @@ import {
 import { useToast } from '../../../components/ui/Toast';
 import { useAuthStore } from '../../../store/authStore';
 import { PODUploadModal } from '../components/PODUploadModal';
+import { RaiseDisputeModal } from '../../../components/ui/RaiseDisputeModal';
 import { LiveTrackingMap } from '../../../components/freight/LiveTrackingMap';
 import { useLocationTracking } from '../../../hooks/useLocationTracking';
 import { LocationSearchInput } from '../../../components/ui/LocationSearchInput';
@@ -45,6 +46,7 @@ export default function ShipmentExecutionPage() {
   const [locationLoading, setLocationLoading] = useState(false);
   
   const [isPodModalOpen, setIsPodModalOpen] = useState(false);
+  const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
   const [isUpdatingEta, setIsUpdatingEta] = useState(false);
   
   const [trackingHistory, setTrackingHistory] = useState<any[]>([]);
@@ -278,6 +280,7 @@ export default function ShipmentExecutionPage() {
         nextAction={nextAction}
         onExecuteAction={handleUpdateStatus}
         onOpenPodModal={() => setIsPodModalOpen(true)}
+        onOpenDisputeModal={() => setIsDisputeModalOpen(true)}
         isTracking={isTracking}
         onToggleTracking={isTracking ? stopTracking : startTracking}
       />
@@ -650,6 +653,18 @@ export default function ShipmentExecutionPage() {
           onUploadSuccess={() => {
             fetchShipment();
           }} 
+        />
+      )}
+
+      {/* Raise Dispute Modal */}
+      {shipment?.load_id && (
+        <RaiseDisputeModal
+          isOpen={isDisputeModalOpen}
+          onClose={() => setIsDisputeModalOpen(false)}
+          loadId={shipment.load_id}
+          onSuccess={() => {
+            fetchShipment();
+          }}
         />
       )}
     </div>

@@ -12,17 +12,20 @@ def create_dispute(db: Session, dispute_in: DisputeCreate, current_company_id: s
     if not load:
         raise HTTPException(404, "Load not found")
         
-    if load.status not in [LoadStatus.COMPLETED, LoadStatus.IN_TRANSIT, LoadStatus.DELIVERED]:
-        raise HTTPException(400, "Can only dispute active or completed loads")
-        
+    from app.domain.freight.shipments.models import Shipment, ShipmentStatus
+    from app.domain.notifications.service import create_notification
+    from app.domain.notifications.models import NotificationType
+
+    shipment = db.query(Shipment).filter(Shipment.load_id == load.id).first()
+    if shipment:
+        shipment.status = ShipmentStatus.DISPUTED
+
     # Determine against_company_id
     if current_company_id == load.shipper_id:
-        # Get carrier from shipment
-        from app.domain.freight.shipments.repository import shipment_repository
-        ship = shipment_repository.get_by_load(db=db, load_id=load.id)
-        if not ship:
+        if shipment and shipment.carrier_id:
+            against_id = shipment.carrier_id
+        else:
             raise HTTPException(400, "Cannot dispute load without an assigned carrier")
-        against_id = ship.carrier_id
     else:
         against_id = load.shipper_id
 
@@ -30,9 +33,22 @@ def create_dispute(db: Session, dispute_in: DisputeCreate, current_company_id: s
         load_id=load.id,
         raised_by_company_id=current_company_id,
         against_company_id=against_id,
-        reason=dispute_in.reason
+        reason=dispute_in.reason,
+        status=DisputeStatus.OPEN
     )
     db.add(dispute)
+
+    create_notification(
+        db,
+        against_id,
+        "Dispute Raised",
+        f"A dispute has been raised regarding Load #{load.id[:8]}. Reason: {dispute_in.reason}",
+        NotificationType.WARNING,
+        "Dispute",
+        dispute.id,
+        "/disputes"
+    )
+
     db.commit()
     db.refresh(dispute)
     return dispute
@@ -45,7 +61,55 @@ def resolve_dispute(db: Session, dispute_id: str, resolve_in: DisputeResolve, ad
     dispute.status = resolve_in.status
     dispute.resolution_notes = resolve_in.resolution_notes
     
-    log_action(db, admin_id, "RESOLVE_DISPUTE", dispute_id, {"status": resolve_in.status.value if hasattr(resolve_in.status, "value") else str(resolve_in.status)})
+    from app.domain.freight.shipments.models import Shipment, ShipmentStatus, ShipmentDocument, DocumentStatus
+    from app.domain.freight.loads.models import Load, LoadStatus
+    from app.domain.notifications.service import create_notification
+    from app.domain.notifications.models import NotificationType
+
+    shipment = db.query(Shipment).filter(Shipment.load_id == dispute.load_id).first()
+    load = db.query(Load).filter(Load.id == dispute.load_id).first()
+
+    if resolve_in.status == DisputeStatus.RESOLVED:
+        # Resolve in favor of POD acceptance
+        if shipment:
+            shipment.status = ShipmentStatus.COMPLETED
+            doc = db.query(ShipmentDocument).filter(
+                ShipmentDocument.shipment_id == shipment.id,
+                ShipmentDocument.document_type == 'POD'
+            ).order_by(ShipmentDocument.created_at.desc()).first()
+            if doc:
+                doc.status = DocumentStatus.VERIFIED
+
+        if load:
+            load.status = LoadStatus.COMPLETED
+
+        create_notification(
+            db,
+            dispute.raised_by_company_id,
+            "Dispute Resolved",
+            f"Dispute for Load #{dispute.load_id[:8]} has been RESOLVED in your favor. Load is completed.",
+            NotificationType.SUCCESS,
+            "Dispute",
+            dispute.id,
+            "/disputes"
+        )
+    elif resolve_in.status == DisputeStatus.DISMISSED:
+        # Dismiss dispute, allow re-upload
+        if shipment:
+            shipment.status = ShipmentStatus.DELIVERED
+
+        create_notification(
+            db,
+            dispute.raised_by_company_id,
+            "Dispute Dismissed",
+            f"Dispute for Load #{dispute.load_id[:8]} was DISMISSED. Please re-upload valid Proof of Delivery.",
+            NotificationType.INFO,
+            "Dispute",
+            dispute.id,
+            "/disputes"
+        )
+
+    log_action(db, admin_id, "RESOLVE_DISPUTE", dispute_id, {"status": str(resolve_in.status)})
     db.commit()
     db.refresh(dispute)
     return dispute
