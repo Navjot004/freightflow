@@ -32,7 +32,14 @@ export default function LoginPage() {
       setError('');
       const response = await api.post('/auth/login', data);
       login(response.data.access_token, response.data.user);
-      navigate('/dashboard');
+      const userRole = response.data.user?.role?.name;
+      if (userRole === 'DRIVER') {
+        navigate('/driver/dashboard');
+      } else if (userRole === 'SUPER_ADMIN') {
+        navigate('/admin/analytics');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || err.response?.data?.detail || 'Invalid credentials');
     }

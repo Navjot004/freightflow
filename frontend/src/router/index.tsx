@@ -46,10 +46,28 @@ const ProtectedRoute = () => {
 
 const PublicRoute = () => {
   const token = useAuthStore(state => state.token);
+  const user = useAuthStore(state => state.user);
   if (token) {
+    if (user?.role?.name === 'DRIVER') {
+      return <Navigate to="/driver/dashboard" replace />;
+    }
+    if (user?.role?.name === 'SUPER_ADMIN') {
+      return <Navigate to="/admin/analytics" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
   return <Outlet />;
+};
+
+const DashboardDispatcher = () => {
+  const user = useAuthStore(state => state.user);
+  if (user?.role?.name === 'DRIVER') {
+    return <DriverDashboardPage />;
+  }
+  if (user?.role?.name === 'SUPER_ADMIN') {
+    return <Navigate to="/admin/analytics" replace />;
+  }
+  return <CompanyDashboardPage />;
 };
 
 export const router = createBrowserRouter([
@@ -80,7 +98,7 @@ export const router = createBrowserRouter([
           {
             element: <DashboardLayout />,
             children: [
-              { path: '/dashboard', element: <CompanyDashboardPage /> },
+              { path: '/dashboard', element: <DashboardDispatcher /> },
               { path: '/settings', element: <CompanySettingsPage /> },
               { path: '/profile', element: <UserProfilePage /> },
               { path: '/marketplace', element: <MarketplacePage /> },

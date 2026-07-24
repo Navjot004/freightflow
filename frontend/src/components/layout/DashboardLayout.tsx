@@ -161,7 +161,7 @@ export default function DashboardLayout() {
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border flex flex-col transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-border">
-          <div className="flex items-center">
+          <Link to={isDriver ? '/driver/dashboard' : isSuperAdmin ? '/admin/analytics' : '/dashboard'} className="flex items-center">
             <Truck className="h-6 w-6 text-primary dark:text-blue-400 mr-2" />
             <div className="flex flex-col">
               <span className="text-xl font-bold dark:text-white leading-tight">FreightFlow</span>
@@ -169,7 +169,7 @@ export default function DashboardLayout() {
                 {getPortalName()}
               </span>
             </div>
-          </div>
+          </Link>
           <button className="md:hidden text-gray-500" onClick={() => setMobileMenuOpen(false)}>
             <X className="h-6 w-6" />
           </button>

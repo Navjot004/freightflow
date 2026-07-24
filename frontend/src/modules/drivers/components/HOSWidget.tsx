@@ -51,6 +51,7 @@ export const HOSWidget = ({ driverId }: HOSWidgetProps) => {
   const [plannedOnDutyHours, setPlannedOnDutyHours] = useState(0.5);
   const [plannedBreakMinutes, setPlannedBreakMinutes] = useState(30);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const { toast } = useToast();
 
   const fetchSummary = async () => {
@@ -72,12 +73,16 @@ export const HOSWidget = ({ driverId }: HOSWidgetProps) => {
   }, [driverId]);
 
   const handleUpdateStatus = async (status: HOSSummary['current_status']) => {
+    if (isUpdatingStatus || summary?.current_status === status) return;
+    setIsUpdatingStatus(true);
     try {
       await updateDriverHOS(driverId, { status });
       toast('Status updated', 'success');
-      fetchSummary();
+      await fetchSummary();
     } catch {
       toast('Failed to update HOS status', 'error');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -362,34 +367,38 @@ export const HOSWidget = ({ driverId }: HOSWidgetProps) => {
             <div className="grid grid-cols-2 gap-2">
               <Button
                 variant={summary.current_status === 'DRIVING' ? 'default' : 'outline'}
-                className="w-full"
+                className={`w-full ${summary.current_status === 'DRIVING' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
+                disabled={isUpdatingStatus || summary.current_status === 'DRIVING'}
                 onClick={() => handleUpdateStatus('DRIVING')}
               >
                 <Activity className="mr-2 h-4 w-4" />
-                Driving
+                {isUpdatingStatus && summary.current_status !== 'DRIVING' ? 'Updating...' : 'Driving'}
               </Button>
               <Button
                 variant={summary.current_status === 'ON_DUTY_NOT_DRIVING' ? 'default' : 'outline'}
-                className="w-full"
+                className={`w-full ${summary.current_status === 'ON_DUTY_NOT_DRIVING' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
+                disabled={isUpdatingStatus || summary.current_status === 'ON_DUTY_NOT_DRIVING'}
                 onClick={() => handleUpdateStatus('ON_DUTY_NOT_DRIVING')}
               >
-                On Duty
+                {isUpdatingStatus && summary.current_status !== 'ON_DUTY_NOT_DRIVING' ? 'Updating...' : 'On Duty'}
               </Button>
               <Button
                 variant={summary.current_status === 'OFF_DUTY' ? 'default' : 'outline'}
-                className="w-full"
+                className={`w-full ${summary.current_status === 'OFF_DUTY' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
+                disabled={isUpdatingStatus || summary.current_status === 'OFF_DUTY'}
                 onClick={() => handleUpdateStatus('OFF_DUTY')}
               >
                 <Coffee className="mr-2 h-4 w-4" />
-                Off Duty
+                {isUpdatingStatus && summary.current_status !== 'OFF_DUTY' ? 'Updating...' : 'Off Duty'}
               </Button>
               <Button
                 variant={summary.current_status === 'SLEEPER' ? 'default' : 'outline'}
-                className="w-full"
+                className={`w-full ${summary.current_status === 'SLEEPER' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
+                disabled={isUpdatingStatus || summary.current_status === 'SLEEPER'}
                 onClick={() => handleUpdateStatus('SLEEPER')}
               >
                 <Moon className="mr-2 h-4 w-4" />
-                Sleeper
+                {isUpdatingStatus && summary.current_status !== 'SLEEPER' ? 'Updating...' : 'Sleeper'}
               </Button>
             </div>
             <div className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">

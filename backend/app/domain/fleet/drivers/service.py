@@ -151,24 +151,40 @@ def reset_password(db: Session, driver_id: str, company_id: str):
     
     return {"message": "Password reset successfully", "temp_password": temp_password}
 
+def _to_naive(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
 def update_hos_status(db: Session, driver_id: str, current_user, hos_in: HOSLogCreate):
     profile = None
     if driver_id == "me":
         profile = driver_profile_repository.get_by_user_id(db=db, user_id=current_user.id)
+        if not profile and current_user.role.name == "DRIVER":
+            profile = DriverProfile(
+                user_id=current_user.id,
+                status=DriverStatus.AVAILABLE,
+                current_hos_status=HOSStatus.OFF_DUTY
+            )
+            db.add(profile)
+            db.commit()
+            db.refresh(profile)
     else:
         profile = driver_profile_repository.get(db=db, id=driver_id)
         
     if not profile:
-        raise HTTPException(status_code=404, detail="Driver not found")
+        raise HTTPException(status_code=404, detail="Driver profile not found")
         
-    user = user_repository.get(db=db, id=profile.user_id)
+    user = user_repository.get(db=db, id=profile.user_id) if profile.user_id != current_user.id else current_user
     
     if current_user.role.name == "DRIVER" and current_user.id != user.id:
         raise HTTPException(status_code=403, detail="Drivers can only update their own HOS status")
-    if user.company_id != current_user.company_id:
+    if user.company_id and current_user.company_id and user.company_id != current_user.company_id:
         raise HTTPException(status_code=403, detail="Access denied")
         
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = _to_naive(datetime.now(timezone.utc))
     
     # Close the previous log if exists
     active_log = db.query(DriverHOSLog).filter(
@@ -201,88 +217,96 @@ def get_hos_summary(db: Session, driver_id: str, current_user) -> DriverHOSSumma
     profile = None
     if driver_id == "me":
         profile = driver_profile_repository.get_by_user_id(db=db, user_id=current_user.id)
+        if not profile and current_user.role.name == "DRIVER":
+            profile = DriverProfile(
+                user_id=current_user.id,
+                status=DriverStatus.AVAILABLE,
+                current_hos_status=HOSStatus.OFF_DUTY
+            )
+            db.add(profile)
+            db.commit()
+            db.refresh(profile)
     else:
         profile = driver_profile_repository.get(db=db, id=driver_id)
         
     if not profile:
-        raise HTTPException(status_code=404, detail="Driver not found")
+        raise HTTPException(status_code=404, detail="Driver profile not found")
         
-    user = user_repository.get(db=db, id=profile.user_id)
+    user = user_repository.get(db=db, id=profile.user_id) if profile.user_id != current_user.id else current_user
     
     if current_user.role.name == "DRIVER" and current_user.id != user.id:
         raise HTTPException(status_code=403, detail="Drivers can only view their own HOS summary")
-    if user.company_id != current_user.company_id:
+    if user.company_id and current_user.company_id and user.company_id != current_user.company_id:
         raise HTTPException(status_code=403, detail="Access denied")
         
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = _to_naive(datetime.now(timezone.utc))
     
     # Calculate FMCSA shift start (last OFF_DUTY or SLEEPER >= 10 hours)
-    # For POC, simplified: look back 24 hours
+    # Look back 2 days
     logs = db.query(DriverHOSLog).filter(
         DriverHOSLog.driver_id == user.id,
         DriverHOSLog.start_time >= now - timedelta(days=2)
     ).order_by(DriverHOSLog.start_time).all()
     
-    # Default shift start to the first log in the last 24h, or now if no logs
-    shift_start = logs[0].start_time if logs else now
+    # Default shift start to the first log in the last 48h, or now if no logs
+    shift_start = _to_naive(logs[0].start_time) if logs else now
     
-    driving_minutes = 0
-    on_duty_minutes = 0
-    consecutive_driving_minutes = 0
+    driving_minutes = 0.0
+    on_duty_minutes = 0.0
+    consecutive_driving_minutes = 0.0
     
     # Find last valid 10-hour reset
-    reset_found = False
-    for i, log in reversed(list(enumerate(logs))):
+    for log in reversed(logs):
+        log_st = _to_naive(log.start_time)
+        log_et = _to_naive(log.end_time) or now
         if log.status in [HOSStatus.OFF_DUTY, HOSStatus.SLEEPER]:
-            duration = (log.end_time or now) - log.start_time
+            duration = log_et - log_st
             if duration.total_seconds() >= 10 * 3600:
-                shift_start = log.end_time or now
-                reset_found = True
+                shift_start = log_et
                 break
                 
-    # If no reset found, and we have logs, the shift started at the earliest log
-    # If no logs at all, shift_start is `now`.
-                
     # Calculate hours since shift start
-    shift_logs = [log for log in logs if (log.end_time or now) > shift_start]
-    
-    last_break_end = shift_start
+    shift_logs = [log for log in logs if (_to_naive(log.end_time) or now) > shift_start]
     
     for log in shift_logs:
-        log_start = max(log.start_time, shift_start)
-        log_end = log.end_time or now
-        duration_minutes = (log_end - log_start).total_seconds() / 60.0
+        log_st = _to_naive(log.start_time)
+        log_et = _to_naive(log.end_time) or now
+        log_start = max(log_st, shift_start)
+        log_end = log_et
+        duration_minutes = max(0.0, (log_end - log_start).total_seconds() / 60.0)
         
         if log.status == HOSStatus.DRIVING:
             driving_minutes += duration_minutes
             consecutive_driving_minutes += duration_minutes
         elif log.status == HOSStatus.ON_DUTY_NOT_DRIVING:
             on_duty_minutes += duration_minutes
-            consecutive_driving_minutes = 0 # Any non-driving resets consecutive driving (technically needs 30 min break)
+            consecutive_driving_minutes = 0.0
         elif log.status in [HOSStatus.OFF_DUTY, HOSStatus.SLEEPER]:
             if duration_minutes >= 30:
-                consecutive_driving_minutes = 0
-                last_break_end = log_end
+                consecutive_driving_minutes = 0.0
                 
     active_log = next((log for log in logs if log.end_time is None), None)
-    time_in_current_status = int((now - active_log.start_time).total_seconds() / 60.0) if active_log else 0
+    active_log_st = _to_naive(active_log.start_time) if active_log else None
+    time_in_current_status = int(max(0.0, (now - active_log_st).total_seconds() / 60.0)) if active_log_st else 0
     
     driving_hours_remaining = max(0.0, 11.0 - (driving_minutes / 60.0))
-    shift_hours_elapsed = (now - shift_start).total_seconds() / 3600.0
+    shift_hours_elapsed = max(0.0, (now - shift_start).total_seconds() / 3600.0)
     on_duty_hours_remaining = max(0.0, 14.0 - shift_hours_elapsed)
     
     time_until_break_minutes = max(0.0, (8 * 60) - consecutive_driving_minutes)
     
-    # 70 hours in 8 days - simplifed
+    # 70 hours in 8 days
     week_logs = db.query(DriverHOSLog).filter(
         DriverHOSLog.driver_id == user.id,
         DriverHOSLog.start_time >= now - timedelta(days=8)
     ).all()
     
-    total_on_duty_minutes = 0
+    total_on_duty_minutes = 0.0
     for log in week_logs:
         if log.status in [HOSStatus.DRIVING, HOSStatus.ON_DUTY_NOT_DRIVING]:
-            total_on_duty_minutes += ((log.end_time or now) - log.start_time).total_seconds() / 60.0
+            log_st = _to_naive(log.start_time)
+            log_et = _to_naive(log.end_time) or now
+            total_on_duty_minutes += max(0.0, (log_et - log_st).total_seconds() / 60.0)
             
     cycle_hours_remaining = max(0.0, 70.0 - (total_on_duty_minutes / 60.0))
     
