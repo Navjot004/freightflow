@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Integer, ForeignKey, Enum, DateTime
+from sqlalchemy import Column, String, Integer, Float, ForeignKey, Enum, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -29,6 +29,7 @@ class Load(Base):
     delivery_date = Column(DateTime, nullable=False)
     equipment_type = Column(String, nullable=False)
     weight_lbs = Column(Integer, nullable=False)
+    rate = Column(Float, nullable=True)
     commodity = Column(String, nullable=True)
     dimensions = Column(String, nullable=True)
     special_instructions = Column(String, nullable=True)

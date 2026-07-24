@@ -39,16 +39,21 @@ export default function MyTendersPage() {
     fetchTenders();
   }, []);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const executeAction = async () => {
-    if (!confirmModal.tenderId || !confirmModal.action) return;
+    if (!confirmModal.tenderId || !confirmModal.action || isSubmitting) return;
     const { tenderId, action } = confirmModal;
-    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    setIsSubmitting(true);
     try {
       await api.post(`/tenders/${tenderId}/${action}`);
       toast(`Tender ${action}ed successfully.`, 'success');
+      setConfirmModal(prev => ({ ...prev, isOpen: false }));
       fetchTenders();
     } catch (err: any) {
       toast(err.response?.data?.detail || `Failed to ${action} tender`, 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -146,6 +151,7 @@ export default function MyTendersPage() {
         message={`Are you sure you want to ${confirmModal.action} this tender?`}
         confirmText={confirmModal.action === 'accept' ? 'Accept' : 'Reject'}
         variant={confirmModal.action === 'accept' ? 'primary' : 'danger'}
+        loading={isSubmitting}
       />
     </div>
   );

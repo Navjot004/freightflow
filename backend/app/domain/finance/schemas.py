@@ -1,7 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
-from app.domain.finance.models import InvoiceStatus, SettlementStatus
+from app.domain.finance.models import InvoiceStatus, InvoiceRelationshipType, SettlementStatus
+from app.domain.identity.schemas import CompanyResponse
 
 # Financial Account
 class FinancialAccountBase(BaseModel):
@@ -17,24 +18,61 @@ class FinancialAccountResponse(FinancialAccountBase):
     
     model_config = ConfigDict(from_attributes=True)
 
+class LoadShortResponse(BaseModel):
+    id: str
+    title: Optional[str] = None
+    origin_address: str
+    destination_address: str
+    status: str
+    rate: float
+    equipment_type: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 # Invoice
 class InvoiceCreate(BaseModel):
-    shipper_id: str
+    recipient_company_id: str
+    relationship_type: InvoiceRelationshipType
+    load_id: Optional[str] = None
     shipment_id: Optional[str] = None
-    amount: float
+    linehaul_amount: float
+    fuel_surcharge: float = 0.0
+    accessorials_amount: float = 0.0
+    tax_amount: float = 0.0
     due_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+class InvoiceStatusUpdate(BaseModel):
+    status: InvoiceStatus
+    notes: Optional[str] = None
 
 class InvoiceResponse(BaseModel):
     id: str
     invoice_number: str
-    shipper_id: str
+    issuer_company_id: str
+    recipient_company_id: str
+    relationship_type: InvoiceRelationshipType
+    load_id: Optional[str] = None
     shipment_id: Optional[str] = None
+    
+    linehaul_amount: float
+    fuel_surcharge: float
+    accessorials_amount: float
+    tax_amount: float
     amount: float
+    
     status: InvoiceStatus
     due_date: Optional[datetime] = None
+    paid_at: Optional[datetime] = None
+    notes: Optional[str] = None
     pdf_url: Optional[str] = None
+    
     created_at: datetime
     updated_at: Optional[datetime] = None
+    
+    issuer_company: Optional[CompanyResponse] = None
+    recipient_company: Optional[CompanyResponse] = None
+    load: Optional[LoadShortResponse] = None
     
     model_config = ConfigDict(from_attributes=True)
 

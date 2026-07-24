@@ -26,6 +26,7 @@ import AuditLogs from '../modules/admin/pages/AuditLogs';
 import DisputesManagement from '../modules/admin/pages/DisputesManagement';
 import MyVehiclePage from '../modules/owner_operator/pages/MyVehiclePage';
 import UserProfilePage from '../modules/profile/pages/UserProfilePage';
+import InvoicesPage from '../modules/finance/pages/InvoicesPage';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import NotFoundPage from '../pages/NotFoundPage';
@@ -111,6 +112,7 @@ export const router = createBrowserRouter([
               { path: '/owner-operator/vehicle', element: <MyVehiclePage /> },
               { path: '/shipments/my-shipments', element: <MyShipmentsPage /> },
               { path: '/shipments/execute/:id', element: <ShipmentExecutionPage /> },
+              { path: '/finance/invoices', element: <InvoicesPage /> },
               { path: '/drivers/manage', element: <DriverListPage /> },
               { path: '/driver/dashboard', element: <DriverDashboardPage /> },
               { path: '/partnerships', element: <PartnershipHubPage /> },

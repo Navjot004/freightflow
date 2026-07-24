@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from './button';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, Loader2 } from 'lucide-react';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -58,7 +58,14 @@ export function ConfirmationModal({
                 : 'bg-blue-600 hover:bg-blue-700 text-white'
             }
           >
-            {loading ? 'Processing...' : confirmText}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing...
+              </span>
+            ) : (
+              confirmText
+            )}
           </Button>
         </div>
       </div>

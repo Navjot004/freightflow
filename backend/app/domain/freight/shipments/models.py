@@ -7,6 +7,7 @@ import enum
 from sqlalchemy import Enum
 
 class ShipmentStatus(str, enum.Enum):
+    WAITING_FOR_PARTNER_ASSIGNMENT = "WAITING_FOR_PARTNER_ASSIGNMENT"
     WAITING_FOR_DRIVER_ASSIGNMENT = "WAITING_FOR_DRIVER_ASSIGNMENT"
     DRIVER_ASSIGNED = "DRIVER_ASSIGNED"
     DRIVER_ACCEPTED = "DRIVER_ACCEPTED"
@@ -27,7 +28,7 @@ class Shipment(Base):
     __tablename__ = "shipments"
     id = Column(String, primary_key=True, default=generate_uuid)
     load_id = Column(String, ForeignKey("loads.id"), unique=True, index=True, nullable=False)
-    carrier_id = Column(String, ForeignKey("companies.id"), index=True, nullable=False)
+    carrier_id = Column(String, ForeignKey("companies.id"), index=True, nullable=True)
     broker_id = Column(String, ForeignKey("companies.id"), index=True, nullable=True)
     
     # Driver Info

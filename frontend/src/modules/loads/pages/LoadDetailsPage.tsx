@@ -5,14 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Button } from '../../../components/ui/button';
-import { MapPin, Calendar, Weight, ArrowLeft, RefreshCw } from 'lucide-react';
+import { MapPin, Calendar, Weight, ArrowLeft, RefreshCw, Edit3 } from 'lucide-react';
 import { useToast } from '../../../components/ui/Toast';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
+import { EditLoadModal } from '../components/EditLoadModal';
 
 export default function LoadDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [load, setLoad] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [bids, setBids] = useState<any[]>([]);
   const [tenders, setTenders] = useState<any[]>([]);
   const [shipment, setShipment] = useState<any>(null);
@@ -122,11 +124,23 @@ export default function LoadDetailsPage() {
           </Button>
           <h2 className="text-2xl font-bold tracking-tight">Load Operations</h2>
         </div>
-        {!hasActiveTender && load.status !== 'OPEN_FOR_BIDDING' && (
-          <Button onClick={handleNextBidder} variant="outline" className="text-blue-600 border-blue-600 hover:bg-blue-50">
-            <RefreshCw className="h-4 w-4 mr-2" /> Auto-Tender Next Lowest Bid
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {(load.status === 'OPEN_FOR_BIDDING' || load.status === 'DRAFT') && (
+            <Button
+              onClick={() => setShowEditModal(true)}
+              variant="outline"
+              className="text-xs font-semibold rounded-xl gap-1.5"
+            >
+              <Edit3 className="w-3.5 h-3.5" /> Edit Load Details
+            </Button>
+          )}
+
+          {!hasActiveTender && load.status !== 'OPEN_FOR_BIDDING' && (
+            <Button onClick={handleNextBidder} variant="outline" className="text-blue-600 border-blue-600 hover:bg-blue-50 text-xs font-semibold rounded-xl">
+              <RefreshCw className="h-4 w-4 mr-2" /> Auto-Tender Next Lowest Bid
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -352,6 +366,14 @@ export default function LoadDetailsPage() {
           </Card>
         </div>
       </div>
+
+      {showEditModal && (
+        <EditLoadModal
+          load={load}
+          onClose={() => setShowEditModal(false)}
+          onRefresh={fetchData}
+        />
+      )}
 
       <ConfirmationModal
         isOpen={confirmModal.isOpen}

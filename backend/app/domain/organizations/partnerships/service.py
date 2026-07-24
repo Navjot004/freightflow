@@ -108,7 +108,7 @@ def request_partnership(db: Session, broker_id: str, request_in: PartnershipRequ
         
     create_notification(
         db, partner.id, "New Partnership Request", 
-        f"Broker {broker.name} has sent you a partnership request.", 
+        f"Partnership request received from {sender.name}.", 
         NotificationType.INFO,
         "Partnership",
         pship.id,

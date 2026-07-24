@@ -34,7 +34,45 @@ def update_load(db: Session, load_id: str, shipper_id: str, load_in: LoadUpdate)
         # Edits to load details are only allowed in early phases
         raise HTTPException(status_code=400, detail="Load details cannot be edited in its current status")
     
-    return load_repository.update(db=db, db_obj=load, obj_in=load_in)
+    updated_load = load_repository.update(db=db, db_obj=load, obj_in=load_in)
+
+    # Notify all carriers/brokers who have pending bids or tenders on this load
+    try:
+        pending_bids = db.query(Bid).filter(Bid.load_id == load_id, Bid.status == BidStatus.PENDING).all()
+        notified_companies = set()
+
+        for bid in pending_bids:
+            if bid.carrier_id not in notified_companies:
+                create_notification(
+                    db,
+                    bid.carrier_id,
+                    "Load Details Updated",
+                    f"Load #{load.id[:8]} ({updated_load.origin_address} ➔ {updated_load.destination_address}) was updated by Shipper. Please review your active bid.",
+                    NotificationType.INFO,
+                    "Load",
+                    load.id,
+                    f"/loads/{load.id}"
+                )
+                notified_companies.add(bid.carrier_id)
+
+        pending_tenders = db.query(Tender).filter(Tender.load_id == load_id, Tender.status == TenderStatus.PENDING).all()
+        for tender in pending_tenders:
+            if tender.carrier_id not in notified_companies:
+                create_notification(
+                    db,
+                    tender.carrier_id,
+                    "Tendered Load Updated",
+                    f"Tendered Load #{load.id[:8]} ({updated_load.origin_address} ➔ {updated_load.destination_address}) was updated by Shipper.",
+                    NotificationType.INFO,
+                    "Load",
+                    load.id,
+                    f"/loads/{load.id}"
+                )
+                notified_companies.add(tender.carrier_id)
+    except Exception as e:
+        print("Failed to dispatch load update notifications:", e)
+
+    return updated_load
 
 def cancel_load(db: Session, load_id: str, shipper_id: str):
     load = load_repository.get_by_id_and_shipper(db=db, load_id=load_id, shipper_id=shipper_id)
@@ -97,16 +135,17 @@ def search_marketplace(
     )
 
     load_ids = [item.id for item in items]
-    bidded_load_ids = set()
+    bidded_loads_map = {}
     if current_user_company_id and load_ids:
-        bids = db.query(Bid.load_id).filter(
+        bids = db.query(Bid.load_id, Bid.amount).filter(
             Bid.carrier_id == current_user_company_id,
             Bid.load_id.in_(load_ids)
         ).all()
-        bidded_load_ids = {b[0] for b in bids}
+        bidded_loads_map = {b[0]: b[1] for b in bids}
 
     for item in items:
-        item.current_user_has_bidded = item.id in bidded_load_ids
+        item.current_user_has_bidded = item.id in bidded_loads_map
+        item.user_bid_amount = bidded_loads_map.get(item.id)
     
     return {
         "total": total,

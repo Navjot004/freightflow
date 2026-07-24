@@ -1,21 +1,19 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '../../../core/api';
 import { useAuthStore } from '../../../store/authStore';
-import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
+import { Card, CardContent } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Button } from '../../../components/ui/button';
-import { Label } from '../../../components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
-import { Search, MapPin, Calendar, Weight, ArrowUpDown, X, PackageOpen } from 'lucide-react';
+import { Search, MapPin, Calendar, Weight, ArrowUpDown, PackageOpen, Eye } from 'lucide-react';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { EmptyState } from '../../../components/ui/EmptyState';
-import { useToast } from '../../../components/ui/Toast';
+import { MarketplaceLoadDetailModal } from '../components/MarketplaceLoadDetailModal';
 
 export default function MarketplacePage() {
   const user = useAuthStore(state => state.user);
   const [data, setData] = useState<{ total: number, items: any[] }>({ total: 0, items: [] });
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   
   // Filters & Pagination State
   const [search, setSearch] = useState('');
@@ -25,14 +23,8 @@ export default function MarketplacePage() {
   const [page, setPage] = useState(0);
   const limit = 10;
 
-  // Bidding Modal State
+  // Selected Load for Modal
   const [selectedLoad, setSelectedLoad] = useState<any>(null);
-  const [bidAmount, setBidAmount] = useState('');
-  const [bidNotes, setBidNotes] = useState('');
-  const [bidExpiry, setBidExpiry] = useState('');
-  const [availablePickupDate, setAvailablePickupDate] = useState('');
-  const [transitTimeEstimate, setTransitTimeEstimate] = useState('');
-  const [bidLoading, setBidLoading] = useState(false);
 
   const fetchLoads = useCallback(async () => {
     setLoading(true);
@@ -77,26 +69,7 @@ export default function MarketplacePage() {
     }
   };
 
-  const handlePlaceBid = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBidLoading(true);
-    try {
-      await api.post(`/loads/${selectedLoad.id}/bids`, {
-        amount: parseFloat(bidAmount),
-        notes: bidNotes,
-        available_pickup_date: availablePickupDate ? new Date(availablePickupDate).toISOString() : null,
-        transit_time_estimate_hours: transitTimeEstimate ? parseInt(transitTimeEstimate) : null,
-        expires_at: new Date(bidExpiry).toISOString()
-      });
-      toast('Bid submitted successfully!', 'success');
-      setSelectedLoad(null);
-      fetchLoads();
-    } catch (err: any) {
-      toast(err.response?.data?.detail || 'Failed to submit bid', 'error');
-    } finally {
-      setBidLoading(false);
-    }
-  };
+
 
   const totalPages = Math.ceil(data.total / limit);
   const isDispatcher = user?.role?.name === 'DISPATCHER';
@@ -200,12 +173,25 @@ export default function MarketplacePage() {
                       <div className="text-sm font-medium">{load.equipment_type.replace('_', ' ')}</div>
                       <div className="flex items-center text-xs text-muted-foreground"><Weight className="h-3 w-3 mr-1"/> {load.weight_lbs.toLocaleString()} lbs</div>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedLoad(load)}
+                        className="rounded-xl text-xs font-semibold gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> View Details
+                      </Button>
+
                       {canBid && (
                         load.current_user_has_bidded ? (
-                          <Button size="sm" variant="outline" disabled>Bid Submitted</Button>
+                          <Button size="sm" variant="outline" disabled className="rounded-xl text-xs font-semibold">
+                            Bid Submitted
+                          </Button>
                         ) : (
-                          <Button size="sm" onClick={() => setSelectedLoad(load)}>Place Bid</Button>
+                          <Button size="sm" onClick={() => setSelectedLoad(load)} className="rounded-xl text-xs font-semibold">
+                            Place Bid
+                          </Button>
                         )
                       )}
                     </TableCell>
@@ -233,48 +219,14 @@ export default function MarketplacePage() {
         </CardContent>
       </Card>
 
-      {/* Bid Modal */}
+      {/* Rich Marketplace Load Detail & Bidding Modal */}
       {selectedLoad && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-lg shadow-xl">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Submit Bid</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => setSelectedLoad(null)} className="h-8 w-8 p-0 rounded-full"><X className="h-4 w-4"/></Button>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-4 text-sm text-muted-foreground">
-                Bidding on route: <strong>{selectedLoad.origin_address}</strong> to <strong>{selectedLoad.destination_address}</strong>
-              </div>
-              <form onSubmit={handlePlaceBid} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Bid Amount ($)</Label>
-                  <Input type="number" step="0.01" value={bidAmount} onChange={e => setBidAmount(e.target.value)} required min={1} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Bid Expiration</Label>
-                  <Input type="datetime-local" value={bidExpiry} onChange={e => setBidExpiry(e.target.value)} required />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Available Pickup Date (Optional)</Label>
-                    <Input type="datetime-local" value={availablePickupDate} onChange={e => setAvailablePickupDate(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Transit Time (Hours) (Optional)</Label>
-                    <Input type="number" min="1" value={transitTimeEstimate} onChange={e => setTransitTimeEstimate(e.target.value)} placeholder="e.g. 48" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes (Optional)</Label>
-                  <Input type="text" placeholder="E.g., Team drivers, ready immediately" value={bidNotes} onChange={e => setBidNotes(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={bidLoading}>
-                  {bidLoading ? 'Submitting...' : 'Submit Bid'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+        <MarketplaceLoadDetailModal
+          load={selectedLoad}
+          canBid={canBid}
+          onClose={() => setSelectedLoad(null)}
+          onRefresh={fetchLoads}
+        />
       )}
     </div>
   );

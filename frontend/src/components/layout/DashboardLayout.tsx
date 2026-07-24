@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import api from '../../core/api';
-import { Truck, LayoutDashboard, Settings, LogOut, Package, Shield, Users, Activity, FileText, Menu, X, Moon, Sun, Network } from 'lucide-react';
+import { Truck, LayoutDashboard, LogOut, Package, Shield, Users, Activity, FileText, Menu, X, Moon, Sun, Network } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
 export default function DashboardLayout() {
@@ -34,7 +34,8 @@ export default function DashboardLayout() {
               { name: 'My Bids', href: '/bids/my-bids', icon: Truck },
               { name: 'My Tenders', href: '/tenders/my-tenders', icon: Truck }
             ] : []),
-            { name: 'Active Shipments', href: '/shipments/my-shipments', icon: Package }
+            { name: 'Active Shipments', href: '/shipments/my-shipments', icon: Package },
+            { name: 'Invoices & Financials', href: '/finance/invoices', icon: FileText }
           ]
         : []
     ),
@@ -74,10 +75,6 @@ export default function DashboardLayout() {
         : []
     ),
     ...(isDriver ? [] : [{ name: 'Disputes', href: '/disputes/manage', icon: Shield }]),
-    ...(user?.role?.name === 'COMPANY_ADMIN' || user?.company?.type === 'OWNER_OPERATOR'
-        ? [{ name: 'Settings', href: '/settings', icon: Settings }]
-        : []
-    ),
   ];
   
   const adminItems = [

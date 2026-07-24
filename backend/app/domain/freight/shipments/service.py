@@ -614,9 +614,16 @@ def get_my_shipments(db: Session, company_id: str, company_type: str, user_id: s
             DriverAssignment.status == DriverAssignmentStatus.ACCEPTED
         ).all()
         shipment_ids = [a.shipment_id for a in assignments]
-        return db.query(Shipment).filter(Shipment.id.in_(shipment_ids)).all()
-        
-    return shipment_repository.get_my_shipments(db=db, company_id=company_id, company_type=company_type)
+        shipments = db.query(Shipment).filter(Shipment.id.in_(shipment_ids)).all()
+    else:
+        shipments = shipment_repository.get_my_shipments(db=db, company_id=company_id, company_type=company_type)
+
+    for s in shipments:
+        active_assignment = partner_assignment_repository.get_active_assignment(db=db, shipment_id=s.id)
+        if active_assignment:
+            s.active_partner_assignment = active_assignment
+
+    return shipments
 
 def get_shipment_for_load(db: Session, load_id: str, company_id: str, company_type: str):
     shipment = shipment_repository.get_by_load(db=db, load_id=load_id)

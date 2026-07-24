@@ -18,10 +18,11 @@ import { useLocationTracking } from '../../../hooks/useLocationTracking';
 import { LocationSearchInput } from '../../../components/ui/LocationSearchInput';
 import api, { toApiUrl, toWebSocketUrl } from '../../../core/api';
 
-// New Driver-Centric Components
+// New Driver-Centric & Shipper Components
 import { DriverTripStepper } from '../components/DriverTripStepper';
 import { DriverHeroCard } from '../components/DriverHeroCard';
 import { DriverFacilityCard } from '../components/DriverFacilityCard';
+import { ShipperShipmentDetailsView } from '../components/ShipperShipmentDetailsView';
 
 export default function ShipmentExecutionPage() {
   const { id } = useParams<{ id: string }>();
@@ -239,6 +240,18 @@ export default function ShipmentExecutionPage() {
 
   const nextAction = getNextStatusAction(shipment.status, !!shipment.pod_url);
   const load = shipment.load;
+
+  if (!isDriver) {
+    return (
+      <ShipperShipmentDetailsView
+        shipment={shipment}
+        trackingHistory={trackingHistory}
+        livePoint={livePoint}
+        issues={issues}
+        onRefresh={fetchShipment}
+      />
+    );
+  }
 
   const isPickupPhase = ['DRIVER_ASSIGNED', 'DRIVER_ACCEPTED', 'PICKUP_STARTED'].includes(shipment.status);
 

@@ -125,9 +125,9 @@ def accept_tender(db: Session, tender_id: str, carrier_id: str):
     
     shipment = Shipment(
         load_id=tender.load_id,
-        carrier_id=tender.carrier_id,
+        carrier_id=None if is_broker else tender.carrier_id,
         broker_id=tender.carrier_id if is_broker else None,
-        status=ShipmentStatus.WAITING_FOR_DRIVER_ASSIGNMENT
+        status=ShipmentStatus.WAITING_FOR_PARTNER_ASSIGNMENT if is_broker else ShipmentStatus.WAITING_FOR_DRIVER_ASSIGNMENT
     )
     db.add(shipment)
     

@@ -11,6 +11,7 @@ class LoadBase(BaseModel):
     delivery_date: datetime
     equipment_type: str
     weight_lbs: int
+    rate: Optional[float] = None
     commodity: Optional[str] = None
     dimensions: Optional[str] = None
     special_instructions: Optional[str] = None
@@ -42,9 +43,11 @@ class LoadUpdate(BaseModel):
     delivery_date: Optional[datetime] = None
     equipment_type: Optional[str] = None
     weight_lbs: Optional[int] = None
+    rate: Optional[float] = None
     commodity: Optional[str] = None
     dimensions: Optional[str] = None
     special_instructions: Optional[str] = None
+    status: Optional[LoadStatus] = None
     
     pickup_appointment_date: Optional[datetime] = None
     pickup_appointment_time: Optional[str] = None
@@ -88,6 +91,7 @@ class MarketplaceLoadResponse(BaseModel):
     updated_at: Optional[datetime] = None
     shipper: Optional[CompanyResponse] = None
     current_user_has_bidded: Optional[bool] = False
+    user_bid_amount: Optional[float] = None
     
     origin_address: str
     destination_address: str
@@ -95,6 +99,7 @@ class MarketplaceLoadResponse(BaseModel):
     delivery_date: datetime
     equipment_type: str
     weight_lbs: int
+    rate: Optional[float] = None
     commodity: Optional[str] = None
     dimensions: Optional[str] = None
     

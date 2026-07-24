@@ -4,7 +4,7 @@ import { getMyAssignments, acceptAssignment, rejectAssignment } from '../api';
 import { useToast } from '../../../components/ui/Toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
-import { MapPin, Check, X, Calendar, Truck, CheckCircle2, TrendingUp } from 'lucide-react';
+import { MapPin, Check, X, Calendar, Truck, CheckCircle2, TrendingUp, Loader2 } from 'lucide-react';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import api from '../../../core/api';
@@ -217,10 +217,12 @@ const DriverDashboardPage = () => {
                     )}
                     <div className="flex gap-4">
                       <Button onClick={() => handleAccept(a.id)} className="bg-green-600 hover:bg-green-700" disabled={isSubmitting[a.id]}>
-                        <Check className="w-4 h-4 mr-2" /> {isSubmitting[a.id] ? 'Accepting...' : 'Accept'}
+                        {isSubmitting[a.id] ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                        {isSubmitting[a.id] ? 'Accepting...' : 'Accept'}
                       </Button>
                       <Button onClick={() => handleReject(a.id)} variant="destructive" disabled={isSubmitting[a.id]}>
-                        <X className="w-4 h-4 mr-2" /> {isSubmitting[a.id] ? 'Rejecting...' : 'Reject'}
+                        {isSubmitting[a.id] ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <X className="w-4 h-4 mr-2" />}
+                        {isSubmitting[a.id] ? 'Rejecting...' : 'Reject'}
                       </Button>
                     </div>
                   </div>

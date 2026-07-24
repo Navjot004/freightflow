@@ -58,6 +58,7 @@ class ShipmentResponse(BaseModel):
     carrier: Optional[CompanyResponse] = None
     dispatcher: Optional[UserResponse] = None
     documents: Optional[list[ShipmentDocumentResponse]] = []
+    active_partner_assignment: Optional['PartnerAssignmentResponse'] = None
 
     class Config:
         from_attributes = True

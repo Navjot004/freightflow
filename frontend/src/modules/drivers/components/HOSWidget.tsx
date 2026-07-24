@@ -5,6 +5,7 @@ import { Card, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { useToast } from '../../../components/ui/Toast';
+import { useAuthStore } from '../../../store/authStore';
 import {
   Activity,
   AlertTriangle,
@@ -16,6 +17,7 @@ import {
   Moon,
   RefreshCw,
   X,
+  ShieldAlert,
 } from 'lucide-react';
 
 type HOSSummary = {
@@ -29,6 +31,7 @@ type HOSSummary = {
 
 type HOSWidgetProps = {
   driverId: string;
+  isReadOnly?: boolean;
 };
 
 const clampNumber = (value: number, min = 0, max = 999) => {
@@ -44,7 +47,7 @@ const formatStatus = (status: HOSSummary['current_status']) =>
     .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
     .join(' ');
 
-export const HOSWidget = ({ driverId }: HOSWidgetProps) => {
+export const HOSWidget = ({ driverId, isReadOnly }: HOSWidgetProps) => {
   const [summary, setSummary] = useState<HOSSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [plannedDriveHours, setPlannedDriveHours] = useState(2);
@@ -53,6 +56,10 @@ export const HOSWidget = ({ driverId }: HOSWidgetProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const { toast } = useToast();
+
+  const user = useAuthStore(state => state.user);
+  const isDriver = user?.role?.name === 'DRIVER';
+  const canUpdateHOS = isDriver && !isReadOnly;
 
   const fetchSummary = async () => {
     try {
@@ -73,6 +80,7 @@ export const HOSWidget = ({ driverId }: HOSWidgetProps) => {
   }, [driverId]);
 
   const handleUpdateStatus = async (status: HOSSummary['current_status']) => {
+    if (!canUpdateHOS) return;
     if (isUpdatingStatus || summary?.current_status === status) return;
     setIsUpdatingStatus(true);
     try {
@@ -362,45 +370,66 @@ export const HOSWidget = ({ driverId }: HOSWidgetProps) => {
           <section className="rounded-lg border border-border p-3 sm:p-4">
             <div className="mb-4 flex items-center gap-2">
               <Gauge className="h-5 w-5 text-emerald-600" />
-              <h4 className="font-semibold text-foreground">Update Duty Status</h4>
+              <h4 className="font-semibold text-foreground">
+                {canUpdateHOS ? 'Update Duty Status' : 'Duty Status (Read-Only)'}
+              </h4>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant={summary.current_status === 'DRIVING' ? 'default' : 'outline'}
-                className={`w-full ${summary.current_status === 'DRIVING' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
-                disabled={isUpdatingStatus || summary.current_status === 'DRIVING'}
-                onClick={() => handleUpdateStatus('DRIVING')}
-              >
-                <Activity className="mr-2 h-4 w-4" />
-                {isUpdatingStatus && summary.current_status !== 'DRIVING' ? 'Updating...' : 'Driving'}
-              </Button>
-              <Button
-                variant={summary.current_status === 'ON_DUTY_NOT_DRIVING' ? 'default' : 'outline'}
-                className={`w-full ${summary.current_status === 'ON_DUTY_NOT_DRIVING' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
-                disabled={isUpdatingStatus || summary.current_status === 'ON_DUTY_NOT_DRIVING'}
-                onClick={() => handleUpdateStatus('ON_DUTY_NOT_DRIVING')}
-              >
-                {isUpdatingStatus && summary.current_status !== 'ON_DUTY_NOT_DRIVING' ? 'Updating...' : 'On Duty'}
-              </Button>
-              <Button
-                variant={summary.current_status === 'OFF_DUTY' ? 'default' : 'outline'}
-                className={`w-full ${summary.current_status === 'OFF_DUTY' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
-                disabled={isUpdatingStatus || summary.current_status === 'OFF_DUTY'}
-                onClick={() => handleUpdateStatus('OFF_DUTY')}
-              >
-                <Coffee className="mr-2 h-4 w-4" />
-                {isUpdatingStatus && summary.current_status !== 'OFF_DUTY' ? 'Updating...' : 'Off Duty'}
-              </Button>
-              <Button
-                variant={summary.current_status === 'SLEEPER' ? 'default' : 'outline'}
-                className={`w-full ${summary.current_status === 'SLEEPER' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
-                disabled={isUpdatingStatus || summary.current_status === 'SLEEPER'}
-                onClick={() => handleUpdateStatus('SLEEPER')}
-              >
-                <Moon className="mr-2 h-4 w-4" />
-                {isUpdatingStatus && summary.current_status !== 'SLEEPER' ? 'Updating...' : 'Sleeper'}
-              </Button>
-            </div>
+
+            {canUpdateHOS ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant={summary.current_status === 'DRIVING' ? 'default' : 'outline'}
+                  className={`w-full ${summary.current_status === 'DRIVING' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
+                  disabled={isUpdatingStatus || summary.current_status === 'DRIVING'}
+                  onClick={() => handleUpdateStatus('DRIVING')}
+                >
+                  <Activity className="mr-2 h-4 w-4" />
+                  {isUpdatingStatus && summary.current_status !== 'DRIVING' ? 'Updating...' : 'Driving'}
+                </Button>
+                <Button
+                  variant={summary.current_status === 'ON_DUTY_NOT_DRIVING' ? 'default' : 'outline'}
+                  className={`w-full ${summary.current_status === 'ON_DUTY_NOT_DRIVING' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
+                  disabled={isUpdatingStatus || summary.current_status === 'ON_DUTY_NOT_DRIVING'}
+                  onClick={() => handleUpdateStatus('ON_DUTY_NOT_DRIVING')}
+                >
+                  {isUpdatingStatus && summary.current_status !== 'ON_DUTY_NOT_DRIVING' ? 'Updating...' : 'On Duty'}
+                </Button>
+                <Button
+                  variant={summary.current_status === 'OFF_DUTY' ? 'default' : 'outline'}
+                  className={`w-full ${summary.current_status === 'OFF_DUTY' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
+                  disabled={isUpdatingStatus || summary.current_status === 'OFF_DUTY'}
+                  onClick={() => handleUpdateStatus('OFF_DUTY')}
+                >
+                  <Coffee className="mr-2 h-4 w-4" />
+                  {isUpdatingStatus && summary.current_status !== 'OFF_DUTY' ? 'Updating...' : 'Off Duty'}
+                </Button>
+                <Button
+                  variant={summary.current_status === 'SLEEPER' ? 'default' : 'outline'}
+                  className={`w-full ${summary.current_status === 'SLEEPER' ? 'opacity-80 cursor-not-allowed border-blue-600' : ''}`}
+                  disabled={isUpdatingStatus || summary.current_status === 'SLEEPER'}
+                  onClick={() => handleUpdateStatus('SLEEPER')}
+                >
+                  <Moon className="mr-2 h-4 w-4" />
+                  {isUpdatingStatus && summary.current_status !== 'SLEEPER' ? 'Updating...' : 'Sleeper'}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-muted/60 border border-border flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground font-medium">Logged Status</span>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                    {formatStatus(summary.current_status)}
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/30 flex items-start gap-2">
+                  <ShieldAlert className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                  <span>
+                    Duty status updates are recorded by the driver via their ELD device or Driver App.
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
               Time in current status: {Math.floor(summary.time_in_current_status_minutes / 60)}h{' '}
               {summary.time_in_current_status_minutes % 60}m

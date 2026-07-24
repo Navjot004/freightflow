@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { MapPin, Navigation, Upload, User, Truck, FileText, CheckCircle, Package, LayoutGrid, List } from 'lucide-react';
+import { MapPin, Navigation, Upload, User, Truck, FileText, CheckCircle, Package, LayoutGrid, List, Clock, CheckCircle2 } from 'lucide-react';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { useToast } from '../../../components/ui/Toast';
@@ -25,6 +25,7 @@ export default function MyShipmentsPage() {
   const user = useAuthStore(state => state.user);
   const { toast } = useToast();
   const isBroker = user?.company?.type === 'BROKER';
+  const isShipper = user?.company?.type === 'SHIPPER';
   const isOwnerOperator = user?.company?.type === 'OWNER_OPERATOR';
   const isCarrier = user?.company?.type === 'CARRIER';
   const isDriver = user?.role?.name === 'DRIVER';
@@ -130,7 +131,11 @@ export default function MyShipmentsPage() {
   const handleOpenAssignPartner = async (shipment: any) => {
     setAssignPartnerShipment(shipment);
     try {
-      const partners = await PartnerAssignmentAPI.getAvailablePartners();
+      let partners = await PartnerAssignmentAPI.getAvailablePartners();
+      if (!partners || partners.length === 0) {
+        const res = await api.get('/transportation-partners');
+        partners = res.data;
+      }
       setAvailablePartners(partners);
     } catch (error) {
       console.error(error);
@@ -359,7 +364,20 @@ export default function MyShipmentsPage() {
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 gap-6">
           {shipments.map((s) => {
-            const nextAction = getNextStatusAction(s.status || s.load.status);
+            const isPartnerPending = s.active_partner_assignment && s.active_partner_assignment.status === 'PENDING';
+            const hasAssignedCarrier = s.carrier && s.carrier_id !== s.broker_id && s.carrier.type !== 'BROKER';
+            const partnerName = isPartnerPending 
+              ? (s.active_partner_assignment.partner?.company_name || s.active_partner_assignment.partner?.name || 'Carrier')
+              : hasAssignedCarrier
+              ? (s.carrier?.company_name || s.carrier?.name)
+              : null;
+            
+            const effectiveStatus = isPartnerPending 
+              ? 'PARTNER_REQUESTED' 
+              : (!hasAssignedCarrier && isBroker)
+              ? 'WAITING_FOR_PARTNER_ASSIGNMENT'
+              : (s.status || s.load?.status || 'WAITING_FOR_DRIVER_ASSIGNMENT');
+            const nextAction = getNextStatusAction(effectiveStatus);
             
             return (
               <Card key={s.id} className="overflow-hidden">
@@ -373,51 +391,72 @@ export default function MyShipmentsPage() {
                       </CardTitle>
                       <div className="text-sm text-muted-foreground mt-1 flex items-center">
                         <span className="mr-2">Status:</span>
-                        <StatusBadge status={s.status || s.load.status} />
+                        <StatusBadge status={effectiveStatus} />
                       </div>
                     </div>
                     
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Button size="sm" variant="outline" onClick={() => navigate(`/shipments/execute/${s.id}`)}>
                         View Details
                       </Button>
 
-                      {nextAction && s.load.status !== 'TENDER_ACCEPTED' && !isBroker && (
+                      {nextAction && s.load.status !== 'TENDER_ACCEPTED' && !isBroker && !isShipper && (
                         <Button size="sm" onClick={() => handleUpdateStatus(s.id, nextAction.next)} className="bg-blue-600 hover:bg-blue-700">
                           {nextAction.label}
                         </Button>
                       )}
-                      
-                      {s.load.status === 'TENDER_ACCEPTED' && isCarrier && (
-                        <Button size="sm" onClick={() => { setAssignDriverShipment(s); setSelectedDriverId(''); setDriverAssignmentNotes(''); }}>
-                          Assign Driver
-                        </Button>
+
+                      {/* BROKER ACTIONS */}
+                      {isBroker && (
+                        <>
+                          {isPartnerPending ? (
+                            <span className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              Partner Requested ({partnerName})
+                            </span>
+                          ) : hasAssignedCarrier ? (
+                            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              Assigned: {partnerName}
+                            </span>
+                          ) : (
+                            <Button size="sm" onClick={() => handleOpenAssignPartner(s)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                              Assign Partner
+                            </Button>
+                          )}
+                        </>
                       )}
 
-                      {s.load.status === 'TENDER_ACCEPTED' && isOwnerOperator && (
+                      {/* CARRIER ACTIONS */}
+                      {isCarrier && (
+                        <>
+                          {(s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load?.status === 'TENDER_ACCEPTED') && (
+                            <Button size="sm" onClick={() => { setAssignDriverShipment(s); setSelectedDriverId(''); setDriverAssignmentNotes(''); }}>
+                              Assign Driver
+                            </Button>
+                          )}
+
+                          {s.status !== 'COMPLETED' && s.status !== 'CANCELLED' && (
+                             user?.role?.name === 'DISPATCHER' ? (
+                               !s.dispatcher_id ? (
+                                 <Button size="sm" onClick={() => handleClaimLoad(s.id)} variant="secondary">Claim Load</Button>
+                               ) : s.dispatcher_id === user.id ? (
+                                 <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded border border-green-200 self-center font-medium">Your Load</span>
+                               ) : null
+                             ) : (
+                               <Button size="sm" onClick={() => { setAssignDispatcherShipment(s); setSelectedDispatcherId(s.dispatcher_id || ''); }} variant="secondary">
+                                 {s.dispatcher_id ? 'Change Dispatcher' : 'Assign Dispatcher'}
+                               </Button>
+                             )
+                          )}
+                        </>
+                      )}
+
+                      {/* OWNER OPERATOR ACTIONS */}
+                      {isOwnerOperator && (s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load?.status === 'TENDER_ACCEPTED') && (
                         <Button size="sm" onClick={() => handleSelfAssign(s.id)}>
                           Self Assign
                         </Button>
-                      )}
-                      
-                      {(s.load.status === 'OPEN_FOR_BIDDING' || s.load.status === 'DRAFT') && isBroker && (
-                        <Button size="sm" onClick={() => handleOpenAssignPartner(s)}>
-                          Assign Partner
-                        </Button>
-                      )}
-
-                      {isCarrier && s.status !== 'COMPLETED' && s.status !== 'CANCELLED' && (
-                         user?.role?.name === 'DISPATCHER' ? (
-                           !s.dispatcher_id ? (
-                             <Button size="sm" onClick={() => handleClaimLoad(s.id)} variant="secondary">Claim Load</Button>
-                           ) : s.dispatcher_id === user.id ? (
-                             <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded border border-green-200 self-center font-medium">Your Load</span>
-                           ) : null
-                         ) : (
-                           <Button size="sm" onClick={() => { setAssignDispatcherShipment(s); setSelectedDispatcherId(s.dispatcher_id || ''); }} variant="secondary">
-                             {s.dispatcher_id ? 'Change Dispatcher' : 'Assign Dispatcher'}
-                           </Button>
-                         )
                       )}
 
                       {user?.company?.type === 'SHIPPER' && s.status === 'POD_UPLOADED' && (
@@ -434,6 +473,7 @@ export default function MyShipmentsPage() {
                   {/* Timeline Bar */}
                   <Timeline 
                     steps={[
+                      { id: 'PARTNER_REQUESTED', label: 'Partner Requested' },
                       { id: 'WAITING_FOR_DRIVER_ASSIGNMENT', label: 'Tender Accepted' },
                       { id: 'DRIVER_ASSIGNED', label: 'Driver Assigned' },
                       { id: 'DRIVER_ACCEPTED', label: 'Driver Accepted' },
@@ -444,7 +484,7 @@ export default function MyShipmentsPage() {
                       { id: 'POD_UPLOADED', label: 'POD Uploaded' },
                       { id: 'COMPLETED', label: 'Completed' }
                     ]}
-                    currentStepId={s.status || 'WAITING_FOR_DRIVER_ASSIGNMENT'}
+                    currentStepId={effectiveStatus}
                   />
 
                   <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x">
@@ -465,14 +505,42 @@ export default function MyShipmentsPage() {
                         </div>
                       )}
                       
-                      {s.driver_name ? (
+                      {isPartnerPending ? (
                         <div className="text-sm space-y-1">
-                          <div className="font-medium">Carrier: {s.carrier?.name || 'N/A'}</div>
-                          <div className="text-muted-foreground">Contact: {s.carrier?.contact_email || 'N/A'}</div>
-                          <div className="flex items-center mt-2"><Truck className="h-4 w-4 mr-2 text-muted-foreground"/> {s.truck_number || 'N/A'}</div>
+                          <div className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-amber-500" /> Partner Requested
+                          </div>
+                          <div className="text-muted-foreground text-xs">
+                            Assigned to: <strong className="text-foreground">{partnerName}</strong>
+                          </div>
+                          <div className="text-[11px] text-amber-600/90 italic">Waiting for partner acceptance</div>
+                        </div>
+                      ) : hasAssignedCarrier ? (
+                        <div className="text-sm space-y-1">
+                          <div className="font-medium text-foreground">
+                            Carrier: <strong className="text-emerald-600 dark:text-emerald-400">{partnerName}</strong>
+                          </div>
+                          {s.driver_name ? (
+                            <>
+                              <div className="text-muted-foreground text-xs">Driver: <strong>{s.driver_name}</strong></div>
+                              <div className="flex items-center text-xs text-muted-foreground mt-1">
+                                <Truck className="h-3.5 w-3.5 mr-1.5 text-muted-foreground"/> Truck: {s.truck_number || 'N/A'}
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-xs text-muted-foreground italic">No driver assigned by carrier yet.</div>
+                          )}
+                        </div>
+                      ) : s.driver_name ? (
+                        <div className="text-sm space-y-1">
+                          <div className="font-medium text-foreground">Driver: {s.driver_name}</div>
+                          <div className="text-muted-foreground text-xs">Contact: {s.driver_phone || 'N/A'}</div>
+                          <div className="flex items-center text-xs text-muted-foreground mt-1">
+                            <Truck className="h-3.5 w-3.5 mr-1.5 text-muted-foreground"/> Truck: {s.truck_number || 'N/A'}
+                          </div>
                         </div>
                       ) : (
-                        <div className="text-sm text-muted-foreground italic">No driver assigned yet.</div>
+                        <div className="text-sm text-muted-foreground italic">No partner or driver assigned yet.</div>
                       )}
                     </div>
                     
@@ -546,7 +614,21 @@ export default function MyShipmentsPage() {
               </TableHeader>
               <TableBody>
                 {shipments.map(s => {
-                  const nextAction = getNextStatusAction(s.status || s.load.status);
+                  const isPartnerPending = s.active_partner_assignment && s.active_partner_assignment.status === 'PENDING';
+                  const hasAssignedCarrier = s.carrier && s.carrier_id !== s.broker_id && s.carrier.type !== 'BROKER';
+                  const partnerName = isPartnerPending 
+                    ? (s.active_partner_assignment.partner?.company_name || s.active_partner_assignment.partner?.name || 'Carrier')
+                    : hasAssignedCarrier
+                    ? (s.carrier?.company_name || s.carrier?.name)
+                    : null;
+                  
+                  const effectiveStatus = isPartnerPending 
+                    ? 'PARTNER_REQUESTED' 
+                    : (!hasAssignedCarrier && isBroker)
+                    ? 'WAITING_FOR_PARTNER_ASSIGNMENT'
+                    : (s.status || s.load?.status || 'WAITING_FOR_DRIVER_ASSIGNMENT');
+                  const nextAction = getNextStatusAction(effectiveStatus);
+
                   return (
                     <TableRow key={s.id}>
                       <TableCell>
@@ -554,10 +636,19 @@ export default function MyShipmentsPage() {
                         <div className="text-xs text-muted-foreground">to {s.load.destination_address}</div>
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={s.status || s.load.status} />
+                        <StatusBadge status={effectiveStatus} />
                       </TableCell>
                       <TableCell>
-                        {s.driver_name ? (
+                        {isPartnerPending ? (
+                          <div className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                            Partner Requested ({partnerName})
+                          </div>
+                        ) : hasAssignedCarrier ? (
+                          <div>
+                            <div className="font-medium text-sm text-emerald-600 dark:text-emerald-400">{partnerName}</div>
+                            {s.driver_name && <div className="text-xs text-muted-foreground">Driver: {s.driver_name}</div>}
+                          </div>
+                        ) : s.driver_name ? (
                           <>
                             <div className="font-medium text-sm">{s.driver_name}</div>
                             <div className="text-xs text-muted-foreground">{s.truck_number || 'N/A'}</div>
@@ -572,14 +663,36 @@ export default function MyShipmentsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2 flex-wrap">
+                        <div className="flex justify-end gap-2 items-center flex-wrap">
                           <Button size="sm" variant="outline" onClick={() => navigate(`/shipments/execute/${s.id}`)}>
                             View Details
                           </Button>
-                          {nextAction && s.load.status !== 'TENDER_ACCEPTED' && !isBroker && (
+
+                          {nextAction && s.load.status !== 'TENDER_ACCEPTED' && !isBroker && !isShipper && (
                             <Button size="sm" onClick={() => handleUpdateStatus(s.id, nextAction.next)} className="bg-blue-600 hover:bg-blue-700">
                               {nextAction.label}
                             </Button>
+                          )}
+
+                          {/* BROKER ACTIONS */}
+                          {isBroker && (
+                            <>
+                              {isPartnerPending ? (
+                                <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                                  Requested ({partnerName})
+                                </span>
+                              ) : hasAssignedCarrier ? (
+                                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  Assigned ({partnerName})
+                                </span>
+                              ) : (
+                                <Button size="sm" onClick={() => handleOpenAssignPartner(s)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                                  Assign Partner
+                                </Button>
+                              )}
+                            </>
                           )}
                           {isCarrier && s.status !== 'COMPLETED' && s.status !== 'CANCELLED' && (
                             <>
@@ -591,7 +704,7 @@ export default function MyShipmentsPage() {
                                 ) : null
                               ) : (
                                 <>
-                                  {s.load.status === 'TENDER_ACCEPTED' && (
+                                  {(s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load.status === 'TENDER_ACCEPTED') && (
                                     <Button size="sm" onClick={() => { setAssignDriverShipment(s); setSelectedDriverId(''); setDriverAssignmentNotes(''); }}>
                                       Assign Driver
                                     </Button>
@@ -603,14 +716,9 @@ export default function MyShipmentsPage() {
                               )}
                             </>
                           )}
-                          {s.load.status === 'TENDER_ACCEPTED' && isOwnerOperator && (
+                          {(s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load.status === 'TENDER_ACCEPTED') && isOwnerOperator && (
                             <Button size="sm" onClick={() => handleSelfAssign(s.id)}>
                               Self Assign
-                            </Button>
-                          )}
-                          {(s.load.status === 'OPEN_FOR_BIDDING' || s.load.status === 'DRAFT') && isBroker && (
-                            <Button size="sm" onClick={() => handleOpenAssignPartner(s)}>
-                              Assign Partner
                             </Button>
                           )}
                           {user?.company?.type === 'SHIPPER' && s.status === 'POD_UPLOADED' && (

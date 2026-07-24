@@ -10,11 +10,13 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { Package } from 'lucide-react';
 import { useToast } from '../../../components/ui/Toast';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
+import { EditLoadModal } from '../components/EditLoadModal';
 
 export default function MyLoadsPage() {
   const navigate = useNavigate();
   const [loads, setLoads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingLoad, setEditingLoad] = useState<any | null>(null);
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, id: string | null}>({isOpen: false, id: null});
   const { toast } = useToast();
 
@@ -106,14 +108,24 @@ export default function MyLoadsPage() {
                     <TableCell>
                       <StatusBadge status={load.status} />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 mr-2" onClick={() => navigate(`/loads/${load.id}`)}>
+                    <TableCell className="text-right space-x-1.5">
+                      <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80" onClick={() => navigate(`/loads/${load.id}`)}>
                         View Bids
                       </Button>
-                      {load.status === 'OPEN_FOR_BIDDING' && (
-                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setConfirmModal({ isOpen: true, id: load.id })}>
-                          Cancel
-                        </Button>
+                      {(load.status === 'OPEN_FOR_BIDDING' || load.status === 'DRAFT') && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs font-semibold"
+                            onClick={() => setEditingLoad(load)}
+                          >
+                            Edit
+                          </Button>
+                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs" onClick={() => setConfirmModal({ isOpen: true, id: load.id })}>
+                            Cancel
+                          </Button>
+                        </>
                       )}
                     </TableCell>
                   </TableRow>
@@ -123,6 +135,15 @@ export default function MyLoadsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {editingLoad && (
+        <EditLoadModal
+          load={editingLoad}
+          onClose={() => setEditingLoad(null)}
+          onRefresh={fetchLoads}
+        />
+      )}
+
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ isOpen: false, id: null })}

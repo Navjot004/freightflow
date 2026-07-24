@@ -15,7 +15,7 @@ export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
   // Map business logic statuses to visual variants
   if (['COMPLETED', 'DELIVERED', 'ACCEPTED', 'POD_UPLOADED', 'TENDER_ACCEPTED', 'DRIVER_ACCEPTED', 'PICKUP_COMPLETED'].includes(normalizedStatus)) {
     variant = 'success';
-  } else if (['PENDING', 'IN_TRANSIT', 'WAITING_FOR_DRIVER_ASSIGNMENT', 'DRIVER_ASSIGNED', 'PICKUP_STARTED', 'TENDER_SENT'].includes(normalizedStatus)) {
+  } else if (['PENDING', 'IN_TRANSIT', 'WAITING_FOR_DRIVER_ASSIGNMENT', 'WAITING_FOR_PARTNER_ASSIGNMENT', 'DRIVER_ASSIGNED', 'PICKUP_STARTED', 'TENDER_SENT'].includes(normalizedStatus)) {
     variant = 'info';
   } else if (['DRAFT', 'EXPIRED', 'NOT_SELECTED'].includes(normalizedStatus)) {
     variant = 'outline';

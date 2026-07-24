@@ -48,7 +48,7 @@ def update_driver(
 def deactivate_driver(
     driver_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(RequireRole(["COMPANY_ADMIN"]))
+    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER"]))
 ):
     """Deactivate a driver."""
     return service.deactivate_driver(db, driver_id, current_user.company_id)
@@ -57,7 +57,7 @@ def deactivate_driver(
 def reset_password(
     driver_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(RequireRole(["COMPANY_ADMIN"]))
+    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER"]))
 ):
     """Reset driver password (generates new temp password)."""
     return service.reset_password(db, driver_id, current_user.company_id)
@@ -67,7 +67,7 @@ def update_hos_status(
     driver_id: str,
     hos_in: schemas.HOSLogCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER", "DRIVER"]))
+    current_user: User = Depends(RequireRole(["DRIVER", "SUPER_ADMIN"]))
 ):
     """Update driver HOS status."""
     return service.update_hos_status(db, driver_id, current_user, hos_in)
