@@ -535,22 +535,46 @@ def upload_pod_complete(
     shipment.osd_reported = osd_reported
     shipment.osd_notes = osd_notes
     
-    # Update Status
+    # Update Status & Set pod_url so it is immediately available for Shipper
     shipment.status = ShipmentStatus.POD_UPLOADED
+    shipment.pod_url = sig_url
+
+    # Create or update ShipmentDocument entry for POD
+    existing_doc = db.query(ShipmentDocument).filter(
+        ShipmentDocument.shipment_id == shipment.id,
+        ShipmentDocument.document_type == 'POD'
+    ).first()
+
+    if not existing_doc:
+        doc = ShipmentDocument(
+            shipment_id=shipment.id,
+            document_type='POD',
+            file_path=sig_url,
+            uploaded_by=user_id,
+            status=DocumentStatus.PENDING_REVIEW
+        )
+        db.add(doc)
+    else:
+        existing_doc.file_path = sig_url
+        existing_doc.status = DocumentStatus.PENDING_REVIEW
+
     db.commit()
     
-    # Generate POD PDF synchronously for POC
-    from app.tasks.document_tasks import generate_pod_pdf_task
-    generate_pod_pdf_task(
-        shipment_id=shipment.id, 
-        user_id=user_id, 
-        receiver_name=receiver_name, 
-        delivery_notes=delivery_notes, 
-        sig_path=sig_path,
-        sig_url=sig_url,
-        osd_reported=osd_reported,
-        osd_notes=osd_notes
-    )
+    # Safely attempt PDF generation (non-blocking if PDF library fails)
+    try:
+        from app.tasks.document_tasks import generate_pod_pdf_task
+        generate_pod_pdf_task(
+            shipment_id=shipment.id, 
+            user_id=user_id, 
+            receiver_name=receiver_name, 
+            delivery_notes=delivery_notes, 
+            sig_path=sig_path,
+            sig_url=sig_url,
+            osd_reported=osd_reported,
+            osd_notes=osd_notes
+        )
+    except Exception as pdf_err:
+        print("POD PDF generation warning:", pdf_err)
     
     db.refresh(shipment)
     return shipment

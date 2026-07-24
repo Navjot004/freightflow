@@ -23,10 +23,17 @@ const apiOrigin = (() => {
 })();
 
 export const toApiUrl = (path: string) => {
-  if (isAbsoluteHttpUrl(path)) return path;
-  if (path.startsWith('/api/')) return `${apiOrigin}${path}`;
+  if (!path) return '';
+  if (isAbsoluteHttpUrl(path) || path.startsWith('data:')) return path;
+  
+  if (path.startsWith('/api/') || path.startsWith('api/')) {
+    const cleanApiPath = path.startsWith('/') ? path : `/${path}`;
+    if (apiOrigin) return `${apiOrigin}${cleanApiPath}`;
+    return cleanApiPath;
+  }
 
-  return `${API_BASE_URL}/${trimLeadingSlash(path)}`;
+  const cleanPath = trimLeadingSlash(path);
+  return `${API_BASE_URL}/${cleanPath}`;
 };
 
 export const toWebSocketUrl = (path: string) => {

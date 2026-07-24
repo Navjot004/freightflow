@@ -421,25 +421,108 @@ export const ShipperShipmentDetailsView: React.FC<ShipperShipmentDetailsViewProp
             </div>
 
             {/* Proof of Delivery (POD) */}
-            <div className="flex items-center justify-between p-4 border rounded-2xl bg-card">
-              <div>
-                <div className="font-bold text-sm text-foreground flex items-center gap-2">
-                  Proof of Delivery (POD)
-                  {shipment.pod_url && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                </div>
-                <div className="text-xs text-muted-foreground">Signed delivery receipt and photo proof</div>
-              </div>
+            {(() => {
+              const podUrlToDisplay = shipment.pod_url || shipment.receiver_signature_url;
+              let photoList: string[] = [];
+              if (shipment.delivery_photos_urls) {
+                try {
+                  photoList = typeof shipment.delivery_photos_urls === 'string'
+                    ? JSON.parse(shipment.delivery_photos_urls)
+                    : shipment.delivery_photos_urls;
+                } catch (e) {}
+              }
 
-              {shipment.pod_url ? (
-                <a href={toApiUrl(shipment.pod_url)} target="_blank" rel="noreferrer">
-                  <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
-                    View POD Receipt
-                  </Button>
-                </a>
-              ) : (
-                <span className="text-xs text-muted-foreground italic">Awaiting driver upload upon delivery</span>
-              )}
-            </div>
+              return (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-2xl bg-card gap-3">
+                    <div>
+                      <div className="font-bold text-sm text-foreground flex items-center gap-2">
+                        Proof of Delivery (POD)
+                        {podUrlToDisplay && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Signed delivery receipt and photo proof</div>
+                    </div>
+
+                    {podUrlToDisplay ? (
+                      <a href={toApiUrl(podUrlToDisplay)} target="_blank" rel="noreferrer">
+                        <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                          View Full POD Document
+                        </Button>
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Awaiting driver upload upon delivery</span>
+                    )}
+                  </div>
+
+                  {/* Inline POD Details & Signature Display for Shipper */}
+                  {(podUrlToDisplay || shipment.receiver_name) && (
+                    <div className="p-4 border rounded-2xl bg-muted/20 space-y-4">
+                      <h4 className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                        Delivery Receipt Details
+                      </h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <span className="text-muted-foreground block text-[11px]">Receiver Name</span>
+                          <span className="font-bold text-foreground text-sm">{shipment.receiver_name || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block text-[11px]">OS&D Status</span>
+                          {shipment.osd_reported ? (
+                            <span className="font-bold text-red-600 dark:text-red-400">⚠️ OS&D Reported</span>
+                          ) : (
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Clean Delivery</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {shipment.delivery_notes && (
+                        <div className="text-xs space-y-1">
+                          <span className="text-muted-foreground block text-[11px]">Delivery Notes</span>
+                          <p className="bg-background p-2.5 rounded-xl border italic text-muted-foreground">"{shipment.delivery_notes}"</p>
+                        </div>
+                      )}
+
+                      {shipment.osd_notes && (
+                        <div className="text-xs space-y-1">
+                          <span className="text-muted-foreground block text-[11px] text-red-500">OS&D Report Notes</span>
+                          <p className="bg-red-500/10 p-2.5 rounded-xl border border-red-500/20 text-red-700 dark:text-red-300">"{shipment.osd_notes}"</p>
+                        </div>
+                      )}
+
+                      {shipment.receiver_signature_url && (
+                        <div className="space-y-1.5">
+                          <span className="text-muted-foreground block text-[11px]">Receiver Signature</span>
+                          <div className="p-2 border rounded-xl bg-white w-fit max-w-xs shadow-sm">
+                            <img
+                              src={toApiUrl(shipment.receiver_signature_url)}
+                              alt="Receiver Signature"
+                              className="h-20 object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {photoList.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t">
+                          <span className="text-muted-foreground block text-[11px]">Delivery Proof Photos ({photoList.length})</span>
+                          <div className="flex flex-wrap gap-2">
+                            {photoList.map((photoUrl, idx) => (
+                              <a key={idx} href={toApiUrl(photoUrl)} target="_blank" rel="noreferrer" className="block border rounded-xl overflow-hidden hover:opacity-90">
+                                <img src={toApiUrl(photoUrl)} alt={`Delivery photo ${idx + 1}`} className="w-20 h-20 object-cover" />
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
