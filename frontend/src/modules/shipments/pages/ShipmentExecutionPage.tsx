@@ -36,7 +36,8 @@ export default function ShipmentExecutionPage() {
   const user = useAuthStore(state => state.user);
   const isDriver = user?.role?.name === 'DRIVER';
   const isOwnerOperator = user?.company?.type === 'OWNER_OPERATOR';
-  const canUploadPOD = isDriver || isOwnerOperator;
+  const isDriverOrOwner = isDriver || isOwnerOperator;
+  const canUploadPOD = isDriverOrOwner;
   
   const [currentLocation, setCurrentLocation] = useState('');
   const [eta, setEta] = useState('');
@@ -54,8 +55,8 @@ export default function ShipmentExecutionPage() {
   const [issueDescription, setIssueDescription] = useState('');
   const [isReportingIssue, setIsReportingIssue] = useState(false);
 
-  // Start tracking when status is IN_TRANSIT or PICKUP_STARTED if driver
-  const isTrackingActive = (isDriver || isOwnerOperator) && (shipment?.status === 'PICKUP_STARTED' || shipment?.status === 'IN_TRANSIT');
+  // Start tracking when status is IN_TRANSIT or PICKUP_STARTED if driver or owner operator
+  const isTrackingActive = isDriverOrOwner && (shipment?.status === 'PICKUP_STARTED' || shipment?.status === 'IN_TRANSIT');
   const { isTracking, error: trackingError, startTracking, stopTracking } = useLocationTracking(id || '', isTrackingActive);
 
   const fetchShipment = async () => {
@@ -241,7 +242,7 @@ export default function ShipmentExecutionPage() {
   const nextAction = getNextStatusAction(shipment.status, !!shipment.pod_url);
   const load = shipment.load;
 
-  if (!isDriver) {
+  if (!isDriverOrOwner) {
     return (
       <ShipperShipmentDetailsView
         shipment={shipment}
@@ -358,8 +359,8 @@ export default function ShipmentExecutionPage() {
             />
           </div>
 
-          {/* Quick ETA & Location Tools for Driver */}
-          {(isDriver || isOwnerOperator) && (
+          {/* Quick ETA & Location Tools for Driver / Owner Operator */}
+          {isDriverOrOwner && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Quick ETA Tool */}
               <Card className="rounded-2xl">
