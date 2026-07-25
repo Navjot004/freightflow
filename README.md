@@ -108,7 +108,7 @@
 
 3. Set up `.env` inside `backend/`:
    ```env
-   DATABASE_URL="postgresql://neondb_owner:npg_vk3hlQHXaKZ2@ep-muddy-silence-azpq4pe9-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+   DATABASE_URL="postgresql://<username>:<password>@<neon-hostname>/<dbname>?sslmode=require"
    SECRET_KEY="your-super-secret-key-change-in-production"
    ```
 
