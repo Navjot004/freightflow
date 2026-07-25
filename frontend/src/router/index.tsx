@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import LandingPage from '../modules/landing/pages/LandingPage';
 import LoginPage from '../modules/auth/pages/LoginPage';
 import SignupPage from '../modules/auth/pages/SignupPage';
 import ForgotPasswordPage from '../modules/auth/pages/ForgotPasswordPage';
@@ -75,6 +76,7 @@ export const router = createBrowserRouter([
   {
     element: <ErrorBoundary><Outlet /></ErrorBoundary>,
     children: [
+      { path: '/', element: <LandingPage /> },
       {
         element: <PublicRoute />,
         children: [
@@ -82,7 +84,6 @@ export const router = createBrowserRouter([
           { path: '/signup', element: <SignupPage /> },
           { path: '/forgot-password', element: <ForgotPasswordPage /> },
           { path: '/invite/accept', element: <AcceptInvitePage /> },
-          { path: '/', element: <Navigate to="/login" replace /> },
         ]
       },
       {

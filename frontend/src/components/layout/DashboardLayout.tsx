@@ -254,27 +254,57 @@ export default function DashboardLayout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 bg-background border-b border-border flex items-center justify-between px-4 sm:px-8 shadow-sm flex-shrink-0">
-          <div className="flex items-center">
-            <button className="md:hidden mr-4 text-gray-500 dark:text-gray-400" onClick={() => setMobileMenuOpen(true)}>
+        <header className="h-16 bg-background/90 backdrop-blur-md border-b border-border flex items-center justify-between px-4 sm:px-8 shadow-sm flex-shrink-0 relative z-10">
+          <div className="flex items-center gap-3">
+            <button className="md:hidden mr-2 text-gray-500 dark:text-gray-400" onClick={() => setMobileMenuOpen(true)}>
               <Menu className="h-6 w-6" />
             </button>
-            <h1 className="text-lg sm:text-xl font-semibold text-foreground capitalize">
+            <h1 className="text-lg sm:text-xl font-bold text-foreground capitalize flex items-center gap-2 font-mono">
               {(location.pathname.split('/')[1] || 'Dashboard').replace(/-/g, ' ')}
             </h1>
+
+            {/* Role-Specific Portal Badge */}
+            {getPortalName() && (
+              <span className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                isShipper ? 'bg-blue-500/10 text-blue-500 border-blue-500/30' :
+                isBroker ? 'bg-purple-500/10 text-purple-500 border-purple-500/30' :
+                isCarrier ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
+                isDriver ? 'bg-amber-500/10 text-amber-500 border-amber-500/30' :
+                isOwnerOperator ? 'bg-rose-500/10 text-rose-500 border-rose-500/30' :
+                'bg-slate-500/10 text-slate-400 border-slate-500/30'
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
+                <span>{getPortalName()}</span>
+              </span>
+            )}
           </div>
+
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Live Telematics Indicator */}
+            <div className="hidden lg:flex items-center gap-2 text-xs font-semibold text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 block animate-pulse" />
+              <span>Telematics Online</span>
+            </div>
+
             <button 
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+              className="p-2 text-muted-foreground hover:bg-muted rounded-full transition-all"
               aria-label="Toggle theme"
             >
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {theme === 'dark' ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5 text-slate-700" />}
             </button>
+
             <NotificationBell />
-            <div className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 font-medium px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
-              {user?.company?.name} ({user?.role?.name})
-            </div>
+
+            <Link
+              to="/profile"
+              className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground font-semibold px-3.5 py-1.5 bg-muted/60 hover:bg-muted rounded-xl border border-border/80 transition-all"
+            >
+              <span className="font-bold text-foreground">{user?.company?.name || user?.first_name}</span>
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                {user?.role?.name}
+              </span>
+            </Link>
           </div>
         </header>
         <main className="flex-1 p-4 sm:p-8 overflow-y-auto w-full">

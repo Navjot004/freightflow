@@ -27,8 +27,8 @@ export default function MyShipmentsPage() {
   const isBroker = user?.company?.type === 'BROKER';
   const isShipper = user?.company?.type === 'SHIPPER';
   const isOwnerOperator = user?.company?.type === 'OWNER_OPERATOR';
-  const isCarrier = user?.company?.type === 'CARRIER';
   const isDriver = user?.role?.name === 'DRIVER';
+  const isCarrier = user?.company?.type === 'CARRIER' && !isDriver;
   const canUploadPOD = isOwnerOperator || isDriver;
   const navigate = useNavigate();
 
