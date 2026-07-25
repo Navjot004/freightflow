@@ -57,34 +57,40 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ onClose,
 
     const load = loads.find((l: any) => l.id === loadId);
     if (load) {
-      setLinehaulAmount(load.rate || 0);
-
-      // Auto-detect relationship type and recipient company
       const companyType = user?.company?.type;
+      let rateToUse = load.rate || 0;
       
       if (companyType === 'BROKER') {
         setRelationshipType('BROKER_TO_SHIPPER');
         if (load.shipper_id) setRecipientCompanyId(load.shipper_id);
+        rateToUse = load.shipper_rate || load.rate || 0;
       } else if (companyType === 'OWNER_OPERATOR') {
         if (load.broker_id) {
           setRelationshipType('OWNER_OPERATOR_TO_BROKER');
           setRecipientCompanyId(load.broker_id);
+          rateToUse = load.carrier_rate || load.rate || 0;
         } else if (load.carrier_id) {
           setRelationshipType('OWNER_OPERATOR_TO_CARRIER');
           setRecipientCompanyId(load.carrier_id);
+          rateToUse = load.partner_rate || load.carrier_rate || load.rate || 0;
         } else if (load.shipper_id) {
           setRelationshipType('OWNER_OPERATOR_TO_SHIPPER');
           setRecipientCompanyId(load.shipper_id);
+          rateToUse = load.carrier_rate || load.rate || 0;
         }
       } else if (companyType === 'CARRIER') {
         if (load.broker_id) {
           setRelationshipType('CARRIER_TO_BROKER');
           setRecipientCompanyId(load.broker_id);
+          rateToUse = load.carrier_rate || load.rate || 0;
         } else if (load.shipper_id) {
           setRelationshipType('CARRIER_TO_SHIPPER');
           setRecipientCompanyId(load.shipper_id);
+          rateToUse = load.carrier_rate || load.rate || 0;
         }
       }
+
+      setLinehaulAmount(rateToUse);
     }
   };
 

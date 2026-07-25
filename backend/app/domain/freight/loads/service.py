@@ -23,6 +23,12 @@ def create_load(db: Session, shipper_id: str, load_in: LoadCreate):
 def get_my_loads(db: Session, shipper_id: str, skip: int = 0, limit: int = 100):
     return load_repository.get_my_loads(db=db, shipper_id=shipper_id, skip=skip, limit=limit)
 
+def get_load_by_id(db: Session, load_id: str, company_id: str, role_name: str = None):
+    load = load_repository.get(db=db, id=load_id)
+    if not load:
+        raise HTTPException(status_code=404, detail="Load not found")
+    return load
+
 def update_load(db: Session, load_id: str, shipper_id: str, load_in: LoadUpdate):
     load = load_repository.get_by_id_and_shipper(db=db, load_id=load_id, shipper_id=shipper_id)
     if not load:

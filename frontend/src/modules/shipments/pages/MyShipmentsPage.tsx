@@ -130,6 +130,8 @@ export default function MyShipmentsPage() {
 
   const handleOpenAssignPartner = async (shipment: any) => {
     setAssignPartnerShipment(shipment);
+    const initialRate = shipment.carrier_rate || shipment.shipper_rate || shipment.load?.rate || '';
+    setAssignmentRate(initialRate);
     try {
       let partners = await PartnerAssignmentAPI.getAvailablePartners();
       if (!partners || partners.length === 0) {
@@ -147,10 +149,16 @@ export default function MyShipmentsPage() {
     if (!selectedPartner || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await PartnerAssignmentAPI.assignPartner(assignPartnerShipment.id, selectedPartner, assignmentNotes);
+      await PartnerAssignmentAPI.assignPartner(
+        assignPartnerShipment.id, 
+        selectedPartner, 
+        assignmentRate !== '' ? Number(assignmentRate) : undefined,
+        assignmentNotes
+      );
       toast('Partner assigned successfully. Waiting for their acceptance.', 'success');
       setAssignPartnerShipment(null);
       setSelectedPartner('');
+      setAssignmentRate('');
       setAssignmentNotes('');
       fetchShipments();
     } catch (err: any) {
@@ -805,6 +813,33 @@ export default function MyShipmentsPage() {
                       return <option key={comp.id} value={comp.id}>{comp.company_name || comp.name}</option>;
                     })}
                   </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Offered Pay Rate ($)</Label>
+                  <Input 
+                    type="number" 
+                    value={assignmentRate} 
+                    onChange={e => setAssignmentRate(e.target.value === '' ? '' : Number(e.target.value))} 
+                    placeholder="Enter agreed pay rate for partner" 
+                    required 
+                  />
+                  {(() => {
+                    const origRate = assignPartnerShipment.shipper_rate || assignPartnerShipment.carrier_rate || assignPartnerShipment.load?.rate || 0;
+                    const numPayRate = Number(assignmentRate) || 0;
+                    if (origRate > 0 && numPayRate > 0) {
+                      const margin = origRate - numPayRate;
+                      const marginPct = ((margin / origRate) * 100).toFixed(1);
+                      return (
+                        <div className="text-xs flex items-center justify-between p-2 rounded-lg bg-muted/50 border font-mono">
+                          <span className="text-muted-foreground">Original Rate: ${origRate}</span>
+                          <span className={`font-bold ${margin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
+                            Margin: ${margin} ({marginPct}%)
+                          </span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div className="space-y-2">
                   <Label>Notes (Optional)</Label>

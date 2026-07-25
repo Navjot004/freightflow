@@ -4,10 +4,12 @@ import { Button } from '../../../components/ui/button';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { LiveTrackingMap } from '../../../components/freight/LiveTrackingMap';
 import { toApiUrl } from '../../../core/api';
+import { useToast } from '../../../components/ui/Toast';
+import { ShipmentAPI } from '../api';
 import {
   MapPin, Truck, Package, Clock, DollarSign, FileText, CheckCircle2,
   Radio, RefreshCw, ArrowLeft, Building2, Mail,
-  User, ShieldCheck
+  User, ShieldCheck, XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,8 +29,36 @@ export const ShipperShipmentDetailsView: React.FC<ShipperShipmentDetailsViewProp
   onRefresh
 }) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'overview' | 'tracking' | 'documents' | 'logs'>('overview');
+  const [isApproving, setIsApproving] = useState(false);
   const load = shipment?.load || {};
+
+  const handleApprovePOD = async () => {
+    try {
+      setIsApproving(true);
+      await ShipmentAPI.approvePOD(shipment.id);
+      toast('POD Approved and Shipment Completed!', 'success');
+      onRefresh();
+    } catch (err: any) {
+      toast(err.response?.data?.detail || 'Failed to approve POD', 'error');
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleRejectPOD = async () => {
+    try {
+      setIsApproving(true);
+      await ShipmentAPI.rejectPOD(shipment.id);
+      toast('POD Rejected and Dispute raised!', 'success');
+      onRefresh();
+    } catch (err: any) {
+      toast(err.response?.data?.detail || 'Failed to reject POD', 'error');
+    } finally {
+      setIsApproving(false);
+    }
+  };
 
   const getMilestoneIndex = (status: string) => {
     switch (status) {
@@ -365,6 +395,122 @@ export const ShipperShipmentDetailsView: React.FC<ShipperShipmentDetailsViewProp
             </Card>
 
           </div>
+
+          {/* Confidential Facility Appointments & Contacts Card */}
+          <Card className="rounded-2xl border-indigo-500/20 shadow-sm border">
+            <CardHeader className="bg-indigo-500/5 border-b pb-3">
+              <CardTitle className="text-sm font-bold flex items-center justify-between">
+                <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">
+                  <ShieldCheck className="w-4 h-4 text-indigo-500" />
+                  Facility Appointments & Contact Details
+                </div>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  Leg Execution Info
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Pickup Facility Info */}
+                <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20">
+                    <span className="font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5 text-xs">
+                      <MapPin className="w-3.5 h-3.5" /> Pickup Facility
+                    </span>
+                    <span className="text-[11px] px-2 py-0.5 rounded font-mono font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                      Dock #{load.pickup_dock_number || 'Standard'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Appointment Date</span>
+                      <span className="font-semibold text-foreground">
+                        {load.pickup_appointment_date ? new Date(load.pickup_appointment_date).toLocaleDateString() : 'FCFS / Open Window'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Appointment Time</span>
+                      <span className="font-semibold text-foreground">{load.pickup_appointment_time || 'FCFS / Open'}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-emerald-500/10">
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Facility Contact</span>
+                      <span className="font-semibold text-foreground">{load.pickup_contact_person || 'Facility Manager'}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Contact Phone</span>
+                      <span className="font-semibold text-foreground">{load.pickup_contact_number || 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs pt-2 border-t border-emerald-500/10">
+                    <span className="text-muted-foreground block text-[11px]">Pickup Ref / Confirmation #</span>
+                    <span className="font-mono font-semibold text-primary">{load.pickup_reference_number || 'N/A'}</span>
+                  </div>
+
+                  {load.pickup_special_instructions && (
+                    <div className="text-xs p-2 bg-emerald-500/10 rounded-lg text-emerald-900 dark:text-emerald-200">
+                      <span className="font-semibold block text-[11px]">Special Instructions:</span>
+                      {load.pickup_special_instructions}
+                    </div>
+                  )}
+                </div>
+
+                {/* Delivery Facility Info */}
+                <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+                    <span className="font-bold text-blue-800 dark:text-blue-400 flex items-center gap-1.5 text-xs">
+                      <MapPin className="w-3.5 h-3.5 text-rose-500" /> Delivery Facility
+                    </span>
+                    <span className="text-[11px] px-2 py-0.5 rounded font-mono font-bold bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                      Dock #{load.delivery_dock_number || 'Standard'}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Appointment Date</span>
+                      <span className="font-semibold text-foreground">
+                        {load.delivery_appointment_date ? new Date(load.delivery_appointment_date).toLocaleDateString() : 'FCFS / Open Window'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Appointment Time</span>
+                      <span className="font-semibold text-foreground">{load.delivery_appointment_time || 'FCFS / Open'}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-blue-500/10">
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Facility Contact</span>
+                      <span className="font-semibold text-foreground">{load.delivery_contact_person || 'Receiving Dept'}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Contact Phone</span>
+                      <span className="font-semibold text-foreground">{load.delivery_contact_number || 'N/A'}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs pt-2 border-t border-blue-500/10">
+                    <span className="text-muted-foreground block text-[11px]">Delivery Ref / PO #</span>
+                    <span className="font-mono font-semibold text-primary">{load.delivery_reference_number || 'N/A'}</span>
+                  </div>
+
+                  {load.delivery_special_instructions && (
+                    <div className="text-xs p-2 bg-blue-500/10 rounded-lg text-blue-900 dark:text-blue-200">
+                      <span className="font-semibold block text-[11px]">Special Instructions:</span>
+                      {load.delivery_special_instructions}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -515,6 +661,36 @@ export const ShipperShipmentDetailsView: React.FC<ShipperShipmentDetailsViewProp
                                 <img src={toApiUrl(photoUrl)} alt={`Delivery photo ${idx + 1}`} className="w-20 h-20 object-cover" />
                               </a>
                             ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Shipper Approval Actions */}
+                      {shipment.status === 'POD_UPLOADED' && (
+                        <div className="pt-3 border-t flex flex-wrap items-center justify-between gap-3">
+                          <div className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5">
+                            <Clock className="w-4 h-4" /> Pending Shipper Verification & Approval
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                              onClick={handleApprovePOD}
+                              disabled={isApproving}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                              {isApproving ? 'Approving...' : 'Approve POD & Complete Shipment'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 border-red-500/30 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl text-xs font-bold"
+                              onClick={handleRejectPOD}
+                              disabled={isApproving}
+                            >
+                              <XCircle className="w-3.5 h-3.5 mr-1.5" />
+                              Reject POD
+                            </Button>
                           </div>
                         </div>
                       )}

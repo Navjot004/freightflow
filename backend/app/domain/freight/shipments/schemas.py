@@ -31,7 +31,12 @@ class LocationUpdate(BaseModel):
 class ShipmentResponse(BaseModel):
     id: str
     load_id: str
-    carrier_id: str
+    carrier_id: Optional[str] = None
+    broker_id: Optional[str] = None
+    
+    shipper_rate: Optional[float] = None
+    carrier_rate: Optional[float] = None
+    partner_rate: Optional[float] = None
     
     dispatcher_id: Optional[str] = None
     
@@ -65,6 +70,7 @@ class ShipmentResponse(BaseModel):
 
 class PartnerAssignmentCreate(BaseModel):
     partner_id: str
+    agreed_rate: Optional[float] = None
     notes: Optional[str] = None
 
 class PartnerAssignmentResponse(BaseModel):
@@ -73,6 +79,7 @@ class PartnerAssignmentResponse(BaseModel):
     broker_id: str
     partner_id: str
     status: str
+    agreed_rate: Optional[float] = None
     assigned_at: datetime
     responded_at: Optional[datetime] = None
     notes: Optional[str] = None

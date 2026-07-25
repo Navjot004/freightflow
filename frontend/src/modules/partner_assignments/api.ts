@@ -26,9 +26,10 @@ export const PartnerAssignmentAPI = {
     return res.data;
   },
   
-  assignPartner: async (shipmentId: string, partnerId: string, notes?: string) => {
+  assignPartner: async (shipmentId: string, partnerId: string, agreedRate?: number, notes?: string) => {
     const res = await api.post<AssignmentResponse>(`/shipments/${shipmentId}/assign-partner`, {
       partner_id: partnerId,
+      agreed_rate: agreedRate,
       notes
     });
     return res.data;

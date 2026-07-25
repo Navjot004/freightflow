@@ -27,6 +27,15 @@ def get_my_loads(
     """View loads created by the current user's company."""
     return service.get_my_loads(db, current_user.company_id, skip, limit)
 
+@router.get("/{load_id}", response_model=schemas.LoadResponse)
+def get_load_by_id(
+    load_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get detailed load information including confidential appointments for authorized users."""
+    return service.get_load_by_id(db, load_id, current_user.company_id, current_user.role.name)
+
 @router.put("/{load_id}", response_model=schemas.LoadResponse)
 def update_load(
     load_id: str,

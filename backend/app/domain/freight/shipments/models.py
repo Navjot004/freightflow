@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, String, ForeignKey, DateTime, Boolean, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -31,6 +31,11 @@ class Shipment(Base):
     carrier_id = Column(String, ForeignKey("companies.id"), index=True, nullable=True)
     broker_id = Column(String, ForeignKey("companies.id"), index=True, nullable=True)
     
+    # Financial Rate Tiers
+    shipper_rate = Column(Float, nullable=True) # Rate paid by Shipper to Broker/Carrier (e.g. $2,500)
+    carrier_rate = Column(Float, nullable=True) # Rate paid by Broker to Carrier (e.g. $2,000)
+    partner_rate = Column(Float, nullable=True) # Rate paid by Carrier to Owner-Op/Partner (e.g. $1,800)
+    
     # Driver Info
     driver_name = Column(String, nullable=True)
     driver_phone = Column(String, nullable=True)
@@ -42,7 +47,7 @@ class Shipment(Base):
     eta = Column(DateTime(timezone=True), nullable=True)
     delay_reason = Column(String, nullable=True)
     
-    # Legacy Document fields (can be kept for backward compatibility if needed, but we'll use shipment_documents)
+    # Legacy Document fields
     bol_url = Column(String, nullable=True) # Bill of Lading
     pod_url = Column(String, nullable=True) # Proof of Delivery
 
@@ -112,6 +117,7 @@ class PartnerAssignment(Base):
     partner_id = Column(String, ForeignKey("companies.id"), nullable=False, index=True)
     
     status = Column(Enum(AssignmentStatus), default=AssignmentStatus.PENDING, nullable=False)
+    agreed_rate = Column(Float, nullable=True)
     
     assigned_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     responded_at = Column(DateTime(timezone=True), nullable=True)

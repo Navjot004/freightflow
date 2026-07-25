@@ -45,6 +45,7 @@ def assign_partner(db: Session, shipment_id: str, broker_id: str, assignment_in:
         shipment_id=shipment_id,
         broker_id=broker_id,
         partner_id=assignment_in.partner_id,
+        agreed_rate=assignment_in.agreed_rate,
         status=AssignmentStatus.PENDING,
         notes=assignment_in.notes
     )
@@ -54,7 +55,7 @@ def assign_partner(db: Session, shipment_id: str, broker_id: str, assignment_in:
         db, 
         assignment_in.partner_id, 
         "New Shipment Assignment", 
-        f"You received a new shipment assignment request from Broker.", 
+        f"You received a new shipment assignment request.", 
         NotificationType.INFO,
         "PartnerAssignment",
         assignment.id,
@@ -79,6 +80,14 @@ def accept_partner_assignment(db: Session, assignment_id: str, partner_id: str):
     
     shipment = shipment_repository.get(db=db, id=assignment.shipment_id)
     shipment.carrier_id = assignment.partner_id
+    
+    if assignment.agreed_rate:
+        if shipment.broker_id:
+            # If assigned by Broker, this is the Carrier Pay Rate
+            shipment.carrier_rate = assignment.agreed_rate
+        else:
+            # If assigned by Carrier, this is the Partner Pay Rate
+            shipment.partner_rate = assignment.agreed_rate
     
     # Check if OWNER_OPERATOR for auto self-assign
     if assignment.partner.type == CompanyType.OWNER_OPERATOR:
@@ -595,7 +604,16 @@ def approve_pod(db: Session, shipment_id: str, shipper_id: str):
         
     doc = shipment_document_repository.get_latest_pod(db=db, shipment_id=shipment_id)
     
-    if not doc:
+    if not doc and shipment.pod_url:
+        doc = ShipmentDocument(
+            shipment_id=shipment.id,
+            document_type='POD',
+            file_path=shipment.pod_url,
+            uploaded_by=shipper_id,
+            status=DocumentStatus.PENDING_REVIEW
+        )
+        db.add(doc)
+    elif not doc:
         raise HTTPException(status_code=404, detail="POD document not found")
         
     doc.status = DocumentStatus.VERIFIED
@@ -617,7 +635,16 @@ def reject_pod(db: Session, shipment_id: str, shipper_id: str):
         
     doc = shipment_document_repository.get_latest_pod(db=db, shipment_id=shipment_id)
     
-    if not doc:
+    if not doc and shipment.pod_url:
+        doc = ShipmentDocument(
+            shipment_id=shipment.id,
+            document_type='POD',
+            file_path=shipment.pod_url,
+            uploaded_by=shipper_id,
+            status=DocumentStatus.PENDING_REVIEW
+        )
+        db.add(doc)
+    elif not doc:
         raise HTTPException(status_code=404, detail="POD document not found")
         
     doc.status = DocumentStatus.REJECTED
@@ -626,6 +653,43 @@ def reject_pod(db: Session, shipment_id: str, shipper_id: str):
     update_shipment_status(db, shipment.id, shipper_id, ShipmentStatus.DISPUTED, shipper_id)
     
     db.commit()
+    return shipment
+
+def apply_partner_masking(shipment: Shipment, company_id: str, company_type: str, role_name: str = None):
+    if not shipment:
+        return shipment
+
+    # Fallback rate population if empty
+    if shipment.load:
+        if shipment.shipper_rate is None and shipment.load.rate:
+            shipment.shipper_rate = shipment.load.rate
+
+    # If requester is CARRIER, DRIVER, or OWNER_OPERATOR:
+    if company_type in ["CARRIER", "OWNER_OPERATOR"] or role_name == "DRIVER":
+        # 1. Financial Privacy (Rate Masking) - Hide Shipper Contract Rate from Carrier/Driver
+        shipment.shipper_rate = None
+        
+        # If subcontracted partner: hide Prime Carrier rate from Subcontracted Owner-Op
+        active_assignment = getattr(shipment, "active_partner_assignment", None)
+        if active_assignment and getattr(active_assignment, "partner_id", None) == company_id:
+            shipment.carrier_rate = None
+        
+        # 2. Partner Abstraction (Disintermediation Protection)
+        # If shipment was brokered, mask Shipper corporate name as "Client (via Broker Name)"
+        if shipment.broker_id and shipment.load and shipment.load.shipper:
+            broker_name = shipment.broker.name if shipment.broker else "Broker"
+            from copy import copy
+            masked_shipper = copy(shipment.load.shipper)
+            masked_shipper.name = f"Client (via {broker_name})"
+            masked_shipper.email = "protected@freightflow.com"
+            masked_shipper.phone = "Protected Line"
+            shipment.load.shipper = masked_shipper
+
+    elif company_type == "SHIPPER":
+        # Shipper should NOT see Carrier's buy rate or subcontractor rates
+        shipment.carrier_rate = None
+        shipment.partner_rate = None
+
     return shipment
 
 def get_my_shipments(db: Session, company_id: str, company_type: str, user_id: str = None, role_name: str = None):
@@ -646,6 +710,7 @@ def get_my_shipments(db: Session, company_id: str, company_type: str, user_id: s
         active_assignment = partner_assignment_repository.get_active_assignment(db=db, shipment_id=s.id)
         if active_assignment:
             s.active_partner_assignment = active_assignment
+        apply_partner_masking(s, company_id, company_type, role_name)
 
     return shipments
 
@@ -667,6 +732,7 @@ def get_shipment_for_load(db: Session, load_id: str, company_id: str, company_ty
         if shipment.carrier_id != company_id:
             raise HTTPException(status_code=403, detail="Access denied")
             
+    apply_partner_masking(shipment, company_id, company_type)
     return shipment
 
 def add_tracking_point(db: Session, shipment_id: str, tracking_in, user_id: str):
