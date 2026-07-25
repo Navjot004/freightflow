@@ -6,48 +6,59 @@
 [![Vite](https://img.shields.io/badge/Vite-8.1-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
-[![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?style=flat-square&logo=leaflet)](https://leafletjs.com/)
+[![NeonDB](https://img.shields.io/badge/Neon_Serverless-PostgreSQL-00E599?style=flat-square&logo=postgresql)](https://neon.tech/)
 
-**FreightFlow** is an enterprise-grade Transportation Management System (TMS) and driver telematics portal built for **Shippers**, **Brokers**, **Carriers**, **Dispatchers**, **Drivers**, and **Super Admins**. It unifies load tendering, spot marketplace bidding, shipment execution, real-time GPS tracking, Hours of Service (HOS) ELD compliance, Proof of Delivery (POD) workflows, and platform administration into a single workspace.
+**FreightFlow** is an enterprise-grade Transportation Management System (TMS) and driver telematics portal built for **Shippers**, **Brokers**, **Carriers**, **Dispatchers**, **Drivers**, and **Super Admins**. It unifies multi-tier load tendering, spot marketplace bidding, shipment execution, 1-hop partner privacy masking, real-time GPS tracking, Hours of Service (HOS) ELD compliance, Proof of Delivery (POD) workflows, and platform administration into a single workspace.
 
 ---
 
 ## 🌟 Key Highlights & Portal Features
 
-### 📱 1. Driver Portal & Mobile Execution
-- **Dedicated Driver Interface**: Clean, driver-first UI engineered for clarity on mobile devices and touchscreens.
+### 💵 1. Multi-Tier Broker Margin & Financial System
+- **3-Tier Financial Rate Hierarchy**:
+  - **`shipper_rate`**: Gross contract rate paid by Shipper to Broker (e.g., $2,500).
+  - **`carrier_rate`**: Buy rate paid by Broker to Carrier (e.g., $2,000; Broker retains $500 margin).
+  - **`partner_rate`**: Subcontracted rate paid by Prime Carrier to Owner-Operator (e.g., $1,800).
+- **Live Margin Calculators**: Real-time margin indicators embedded in Partner Assignment & Tender modals (`Margin: $2,500 - $2,000 = $500 (20.0%)`).
+- **Multi-Relationship Invoicing**: Automated invoice rate selection for `BROKER_TO_SHIPPER`, `CARRIER_TO_BROKER`, and `OWNER_OPERATOR_TO_CARRIER`.
+
+### 🛡️ 2. 1-Hop Partner Masking (Disintermediation Protection)
+- **Partner Abstraction**: When a Carrier or Driver views a brokered shipment, original Shipper corporate identity is masked as `"Client (via [Broker Name])"` and corporate contact details are hidden.
+- **Financial Rate Masking**:
+  - **Carrier / Driver View**: Hides Shipper contract rates and Broker gross margins.
+  - **Subcontractor View**: Hides Prime Carrier contract rates.
+  - **Shipper View**: Hides Carrier/Partner buy rates.
+
+### 📅 3. Confidential Facility Appointments & Contacts Engine
+- **Full Leg Execution Details**:
+  - **Pickup Facility**: Appointment Date & Time, Contact Person & Phone, Dock/Bay #, Reference/PU #, Special Instructions.
+  - **Delivery Facility**: Appointment Date & Time, Contact Person & Phone, Dock/Bay #, Delivery Ref/PO #, Special Instructions.
+- **Role-Aware Security**: Full details exposed to authorized execution parties; public marketplace search masks contact details prior to booking.
+- **High-Visibility UI Cards**: Embedded in `LoadDetailsPage`, `ShipperShipmentDetailsView`, `DriverHeroCard`, and `DriverFacilityCard`.
+
+### 📱 4. Driver Portal & Mobile Execution
+- **Dedicated Driver Interface**: Mobile-first UI for clear operational touch control.
 - **🗺️ Real-Time Navigation & OSRM Routing Engine**:
   - Live GPS tracking via HTML5 Geolocation & WebSockets.
-  - **Dynamic Leg 1 Pathing**: Calculates and renders live driving routes from **Driver Current Location ➔ Pickup Facility (Origin)**.
-  - **Dynamic Leg 2 Pathing**: Automatically switches to render live driving routes from **Driver Current Location ➔ Delivery Destination**.
-  - Recalibrate GPS button to refresh position and route bounds.
+  - **Dynamic Leg 1 Pathing**: Driver Current Location ➔ Pickup Facility (Origin).
+  - **Dynamic Leg 2 Pathing**: Driver Current Location ➔ Delivery Destination.
 - **⏱️ Hours of Service (HOS) & ELD Compliance**:
-  - 11-Hour Driving Limit, 14-Hour On-Duty Shift Clock, and 70-Hour / 8-Day Duty Cycle tracking.
-  - Interactive HOS Status Switcher (`DRIVING`, `ON_DUTY_NOT_DRIVING`, `SLEEPER_BERTH`, `OFF_DUTY`).
-  - HOS Violation detector and rest break alerts.
-- **📸 Proof of Delivery (POD) Lifecycle**:
+  - 11-Hour Driving Limit, 14-Hour Shift Clock, and 70-Hour / 8-Day Duty Cycle tracking.
+  - HOS Duty Status Switcher (`DRIVING`, `ON_DUTY_NOT_DRIVING`, `SLEEPER_BERTH`, `OFF_DUTY`).
+- **📸 Proof of Delivery (POD) & Verification Workflow**:
   - Camera & document upload for PODs and Bills of Lading (BOL).
-  - Clear multi-stage status separation:
-    - **`POD_UPLOADED`**: Submitted & Pending Shipper / Broker Verification.
-    - **`COMPLETED`**: Approved & Verified by Shipper (unlocks driver payout).
+  - One-click Shipper **Approve POD & Complete Shipment** or **Reject POD & Open Dispute** control cards.
 
-### 🏢 2. Shipper & Broker Marketplace
+### 🏢 5. Shipper & Broker Marketplace
 - **Load Creation & Tendering**: Create freight loads with origin/destination geocoding, cargo specs, weight, rate, and pickup/delivery windows.
-- **Bidding & Spot Market**: Carriers bid on open loads; Shippers accept bids or tender directly to preferred partner carriers.
-- **POD Review & Verification**: Review uploaded delivery documents and approve shipments for completion.
+- **Bidding & Spot Market**: Carriers bid on open loads; Shippers/Brokers accept bids or tender directly to preferred partner carriers.
 
-### 🚛 3. Carrier & Fleet Management
-- **Fleet & Driver Directory**: Manage drivers, track availability (`AVAILABLE`, `ASSIGNED`, `ON_TRIP`, `OFF_DUTY`, `SUSPENDED`), and monitor HOS status.
-- **Multi-Criteria Search & Filtering**:
-  - Global Search Input matching Driver Name, Email, Phone, or Fleet Manager.
-  - **Searchable Fleet Manager Combobox Dropdown**: Embedded search input (`🔍 Search fleet manager...`) for quickly filtering dispatchers.
-  - Filters for Driver Status and HOS Duty Status.
-- **Dispatcher Assignment**: Easily assign or change Fleet Managers for drivers.
+### 🚛 6. Carrier & Fleet Management
+- **Fleet Directory & Driver Allocation**: Manage drivers, track availability (`AVAILABLE`, `ASSIGNED`, `ON_TRIP`, `OFF_DUTY`, `SUSPENDED`), and monitor HOS status.
+- **Searchable Fleet Manager Combobox Dropdown**: Embedded search input (`🔍 Search fleet manager...`) for quick dispatcher selection.
 
-### 🛡️ 4. Super Admin Console
-- **User Management Portal**: Complete overview of registered platform users.
-- **Role Badging**: Explicit role visualization (`Super Admin`, `Shipper`, `Broker`, `Carrier`, `Dispatcher`, `Driver`, `Owner Operator`).
-- **Advanced Filtering**: Filter users by Role, Status (`Active` / `Suspended`), or search by Name, Email, or Company Name.
+### 🛡️ 7. Super Admin Console
+- **User Management Portal**: Complete overview of registered platform users and role badging.
 - **Audit Logs & Dispute Resolution**: Platform analytics, company verification, and system audit logs.
 
 ---
@@ -61,45 +72,9 @@
 | **State & Routing** | Zustand, React Router v6 | Global state & multi-portal role routing |
 | **Interactive Maps** | React Leaflet, OSRM API | Real-time GPS mapping & driving route geometry |
 | **Backend API** | FastAPI, Python 3.12+ | High-performance async REST & WebSocket server |
-| **Database & ORM** | PostgreSQL 16, SQLAlchemy 2.0, Alembic | Relational schema & migration management |
+| **Database & ORM** | Neon Serverless PostgreSQL 16, SQLAlchemy 2.0, Alembic | Cloud relational schema & migration management |
 | **Real-time Telematics** | WebSockets, Redis | Low-latency driver position broadcasts |
 | **Authentication** | JWT (JSON Web Tokens), Passlib (Bcrypt) | Secure role-based authorization |
-
----
-
-## 📂 Project Structure
-
-```text
-FreightFlow/
-├── backend/                        # FastAPI Application Server
-│   ├── alembic/                    # Database migrations
-│   ├── app/
-│   │   ├── main.py                 # Application entrypoint & routes initialization
-│   │   ├── core/                   # Security, JWT, DB session, & dependencies
-│   │   └── domain/
-│   │       ├── identity/           # User authentication, roles, & company models
-│   │       ├── freight/            # Loads, shipments, tracking, & POD logic
-│   │       ├── drivers/            # Driver profiles, assignments, & HOS engine
-│   │       └── admin/              # Super admin analytics, audit logs, & company verification
-│   └── tests/                      # Pytest test suites
-│
-├── frontend/                       # React 18 + Vite Application
-│   ├── src/
-│   │   ├── components/             # Reusable UI components (Table, Card, LiveTrackingMap)
-│   │   ├── core/                   # Axios API client & WebSocket connections
-│   │   ├── modules/
-│   │   │   ├── admin/              # Super Admin pages (User Management, Audit Logs)
-│   │   │   ├── shipments/          # Shipment execution, Driver Hero card, & POD modal
-│   │   │   ├── drivers/            # Fleet directory, HOS widget, & manager combobox
-│   │   │   ├── loads/              # Load board, bidding, & tendering
-│   │   │   └── auth/               # Login, registration, & role guard routes
-│   │   └── store/                  # Zustand global auth & UI state
-│   ├── index.html
-│   └── vite.config.ts
-│
-├── docs/                           # Architecture, API specifications, & guides
-└── docker-compose.yml              # PostgreSQL 16 & Redis docker services
-```
 
 ---
 
@@ -109,37 +84,18 @@ FreightFlow/
 
 - **Node.js**: v18.x or later & `npm`
 - **Python**: v3.11 or v3.12+
-- **Docker Desktop**: (Optional, for running local PostgreSQL & Redis)
+- **Database**: Local PostgreSQL or Neon PostgreSQL Cloud URI
 
 ---
 
-### 1. Start Database & Infrastructure Services
+### 1. Set Up & Run the Backend API
 
-If using Docker Compose:
-```bash
-docker compose up -d
-```
-*Starts PostgreSQL on port `5432` and Redis on port `6379`.*
-
----
-
-### 2. Set Up & Run the Backend API
-
-1. Navigate to the `backend` directory:
+1. Navigate to `backend/`:
    ```bash
    cd backend
    ```
 
-2. Create a `.env` configuration file inside `backend/`:
-   ```env
-   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/freightflow
-   REDIS_URL=redis://localhost:6379/0
-   SECRET_KEY=your-super-secret-key-change-in-production
-   BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-   ```
-   *(Note: SQLite can also be used for quick local testing: `DATABASE_URL=sqlite:///./freightflow.db`)*
-
-3. Create virtual environment & install dependencies:
+2. Create virtual environment & install dependencies:
    ```bash
    python -m venv venv
    # On Windows:
@@ -150,28 +106,29 @@ docker compose up -d
    pip install -r requirements.txt
    ```
 
-4. Run database migrations:
-   ```bash
-   alembic upgrade head
+3. Set up `.env` inside `backend/`:
+   ```env
+   DATABASE_URL="postgresql://neondb_owner:npg_vk3hlQHXaKZ2@ep-muddy-silence-azpq4pe9-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+   SECRET_KEY="your-super-secret-key-change-in-production"
    ```
 
-5. Start FastAPI development server:
+4. Start FastAPI server:
    ```bash
    uvicorn app.main:app --reload --port 8000
    ```
    - API Server: `http://localhost:8000`
-   - Interactive Swagger Docs: `http://localhost:8000/docs`
+   - Swagger Documentation: `http://localhost:8000/docs`
 
 ---
 
-### 3. Set Up & Run the Frontend Web App
+### 2. Set Up & Run the Frontend Web App
 
-1. Open a new terminal and navigate to the `frontend` directory:
+1. Navigate to `frontend/`:
    ```bash
    cd frontend
    ```
 
-2. Install NPM dependencies:
+2. Install dependencies:
    ```bash
    npm install
    ```
@@ -189,46 +146,34 @@ docker compose up -d
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `POST` | `/api/auth/login` | Authenticate user & issue JWT bearer token |
-| `POST` | `/api/auth/register` | Register new Shipper, Carrier, or Broker company |
-| `GET` | `/api/loads/` | List loads (with role-based scope filtering) |
-| `POST` | `/api/loads/` | Create a new load |
-| `GET` | `/api/shipments/{id}` | Fetch shipment execution details & tracking history |
-| `POST` | `/api/shipments/{id}/update-status` | Execute shipment stage transition |
-| `POST` | `/api/shipments/{id}/pod` | Upload Proof of Delivery (POD) document |
-| `GET` | `/api/drivers/` | List carrier drivers & fleet manager assignments |
-| `POST` | `/api/drivers/` | Add a new fleet driver |
-| `GET` | `/api/hos/{driver_id}/status` | Fetch driver HOS clocks & duty logs |
-| `POST` | `/api/hos/{driver_id}/change-status` | Switch driver HOS duty status |
-| `GET` | `/api/admin/users` | List all system users (Super Admin only) |
-| `POST` | `/api/admin/users/{id}/toggle-status` | Suspend or activate a user account |
+| `POST` | `/api/v1/auth/login` | Authenticate user & issue JWT bearer token |
+| `POST` | `/api/v1/auth/signup` | Register new Shipper, Carrier, Broker, or Owner Operator |
+| `GET` | `/api/v1/loads/` | List loads (with role-based scope filtering) |
+| `GET` | `/api/v1/loads/{id}` | Get detailed load info & confidential facility appointments |
+| `POST` | `/api/v1/shipments/{id}/assign-partner` | Assign partner with offered pay rate & agreed margin |
+| `POST` | `/api/v1/shipments/{id}/approve-pod` | Shipper one-click POD approval & shipment completion |
+| `POST` | `/api/v1/shipments/{id}/reject-pod` | Shipper POD rejection & dispute initiation |
+| `GET` | `/api/v1/shipments/me` | Fetch shipment execution details with partner masking |
+| `GET` | `/api/v1/hos/{driver_id}/status` | Fetch driver HOS clocks & duty logs |
 | `WS` | `/ws/live-tracking/{shipment_id}` | WebSocket stream for real-time driver GPS locations |
 
 ---
 
 ## 🧪 Testing & Verification
 
-Run frontend TypeScript compilation & production build validation:
+Run backend test suites (POD workflow, multi-tier margins, partner masking, appointment visibility):
+```bash
+cd backend
+.\venv\Scripts\python -m pytest tests/test_pod_workflow.py tests/test_margin_and_masking.py tests/test_appointment_visibility.py
+```
+
+Run frontend TypeScript compilation & build check:
 ```bash
 cd frontend
 npx tsc --noEmit
 npm run build
 ```
 
-Run backend test suite:
-```bash
-cd backend
-pytest
-```
-
 ---
-
-## 📄 License & Documentation
-
-- Comprehensive architecture guides can be found in the [`docs/`](docs/) directory:
-  - [Architecture Overview](docs/ARCHITECTURE.md)
-  - [Backend Architecture](docs/BACKEND_ARCHITECTURE.md)
-  - [API Specification](docs/API_SPECIFICATION.md)
-  - [Development Guide](docs/DEVELOPMENT_GUIDE.md)
 
 Developed for **FreightFlow Logistics Platform**.
