@@ -12,6 +12,7 @@ export interface AssignmentResponse {
   broker_id: string;
   partner_id: string;
   status: string;
+  agreed_rate?: number;
   assigned_at: string;
   responded_at?: string;
   notes?: string;

@@ -83,6 +83,11 @@ export default function AssignmentRequestsPage() {
                         Assignment Request from {assignment.broker?.name || 'Broker'}
                       </h3>
                       <div className="mt-2 text-sm text-muted-foreground space-y-1">
+                        {assignment.agreed_rate != null && (
+                          <div className="inline-flex items-center px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-extrabold text-base font-mono mb-1">
+                            💰 Offered Pay: ${assignment.agreed_rate.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </div>
+                        )}
                         <p><strong>Shipment ID:</strong> {assignment.shipment_id}</p>
                         <div className="flex items-center space-x-2 text-sm">
                           <strong>Status:</strong> <StatusBadge status={assignment.status} />
