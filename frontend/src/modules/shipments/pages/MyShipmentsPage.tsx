@@ -45,6 +45,7 @@ export default function MyShipmentsPage() {
   const [assignPartnerShipment, setAssignPartnerShipment] = useState<any>(null);
   const [availablePartners, setAvailablePartners] = useState<Company[]>([]);
   const [selectedPartner, setSelectedPartner] = useState('');
+  const [assignmentRate, setAssignmentRate] = useState<number | ''>('');
   const [assignmentNotes, setAssignmentNotes] = useState('');
   
   // Assign Dispatcher State

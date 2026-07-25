@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { Button } from '../../../components/ui/button';
-import { MapPin, Calendar, Weight, ArrowLeft, RefreshCw, Edit3, ShieldCheck, Clock, Phone, User } from 'lucide-react';
+import { MapPin, Calendar, Weight, ArrowLeft, RefreshCw, Edit3, ShieldCheck } from 'lucide-react';
 import { useToast } from '../../../components/ui/Toast';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { EditLoadModal } from '../components/EditLoadModal';
