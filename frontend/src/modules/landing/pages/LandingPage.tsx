@@ -8,24 +8,24 @@ import { LandingFooter } from '../components/LandingFooter';
 
 export const LandingPage: React.FC = () => {
   useEffect(() => {
-    document.title = "FreightFlow — Next-Gen Freight Management & Telematics Platform";
+    document.title = "FreightFlow — Telematics & TMS Platform";
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-500 selection:text-white">
-      {/* Navigation */}
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
+      {/* Native Navbar with Light/Dark theme toggle */}
       <LandingNavbar />
 
-      {/* Hero Section & Live Telematics Simulator */}
+      {/* Main Hero & Interactive Engine */}
       <LandingHero />
 
-      {/* Metrics Bar */}
+      {/* Stats Bar */}
       <StatsMetrics />
 
-      {/* Role Ecosystem Matrix (Shipper, Broker, Carrier, Driver, Owner-Op) */}
+      {/* Role Workspaces */}
       <RoleMatrixSection />
 
-      {/* Feature Showcase Grid */}
+      {/* Feature Capabilities Grid */}
       <FeatureShowcase />
 
       {/* Footer */}

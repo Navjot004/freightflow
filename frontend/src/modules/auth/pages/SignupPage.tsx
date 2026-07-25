@@ -8,7 +8,8 @@ import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../../components/ui/card';
-import { Truck, Eye, EyeOff } from 'lucide-react';
+import { useThemeStore } from '../../../store/themeStore';
+import { ArrowLeft, Sun, Moon, Eye, EyeOff } from 'lucide-react';
 
 const signupSchema = z.object({
   first_name: z.string().min(2, 'Required'),
@@ -28,6 +29,7 @@ type SignupForm = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   const navigate = useNavigate();
+  const { theme, setTheme } = useThemeStore();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -71,17 +73,39 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4 py-12">
-      <Card className="w-full max-w-xl">
-        <CardHeader className="space-y-2 text-center">
-          <div className="flex justify-center mb-2">
-            <div className="rounded-full bg-primary/10 p-3">
-              <Truck className="h-6 w-6 text-primary" />
+    <div className="min-h-screen bg-background text-foreground flex flex-col justify-center items-center p-4 relative py-12">
+      {/* Top Header Row */}
+      <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-20">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg bg-card border border-border shadow-sm transition-all"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Landing Page</span>
+        </Link>
+
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? <Sun className="h-5 w-5 text-amber-400" /> : <Moon className="h-5 w-5 text-slate-600" />}
+        </button>
+      </div>
+
+      <div className="w-full max-w-xl relative z-10 my-8">
+        <Card className="border-border bg-card shadow-lg">
+          <CardHeader className="space-y-3 text-center pb-2">
+            <div className="flex justify-center mb-1">
+              <img
+                src="/assets/logo-full.png"
+                alt="FreightFlow Logo"
+                className="h-10 w-auto dark:invert object-contain"
+              />
             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-          <CardDescription>Register your company on FreightFlow</CardDescription>
-        </CardHeader>
+            <CardTitle className="text-2xl font-bold tracking-tight">Create an Account</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">Register your company on FreightFlow</CardDescription>
+          </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {error && (
@@ -196,5 +220,6 @@ export default function SignupPage() {
         </CardFooter>
       </Card>
     </div>
-  );
+  </div>
+);
 }
