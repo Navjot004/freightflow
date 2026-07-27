@@ -22,8 +22,11 @@ from app.core.config import settings
 UPLOAD_DIR = settings.UPLOAD_DIR
 
 def ensure_upload_dir():
-    if not os.path.exists(UPLOAD_DIR):
-        os.makedirs(UPLOAD_DIR)
+    try:
+        if not os.path.exists(UPLOAD_DIR):
+            os.makedirs(UPLOAD_DIR, exist_ok=True)
+    except Exception as e:
+        print(f"Warning: Could not create upload directory {UPLOAD_DIR}: {e}")
 
 def assign_partner(db: Session, shipment_id: str, broker_id: str, assignment_in: PartnerAssignmentCreate):
     from app.domain.identity.models import Company, VerificationStatus

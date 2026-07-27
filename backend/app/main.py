@@ -127,13 +127,22 @@ app.include_router(websockets_router, prefix="/ws", tags=["websockets"])
 
 UPLOAD_DIR = settings.UPLOAD_DIR
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+try:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+except Exception as e:
+    print(f"Warning: Could not create upload directory {UPLOAD_DIR}: {e}")
+    UPLOAD_DIR = "/tmp/uploads"
+    try:
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+    except Exception:
+        pass
 
-app.mount(
-    f"{settings.API_V1_STR}/uploads",
-    StaticFiles(directory=UPLOAD_DIR),
-    name="uploads"
-)
+if os.path.exists(UPLOAD_DIR):
+    app.mount(
+        f"{settings.API_V1_STR}/uploads",
+        StaticFiles(directory=UPLOAD_DIR),
+        name="uploads"
+    )
 
 @app.get("/")
 def root():

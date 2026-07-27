@@ -10,7 +10,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./freightflow.db"
     REDIS_URL: str = "redis://localhost:6379/0"
     LOG_LEVEL: str = "INFO"
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
+    UPLOAD_DIR: str = os.getenv(
+        "UPLOAD_DIR",
+        "/tmp/uploads" if (os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) else "uploads"
+    )
     BACKEND_CORS_ORIGINS: str = os.getenv(
         "BACKEND_CORS_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173,https://freightflow-opal.vercel.app,http://localhost:3000"

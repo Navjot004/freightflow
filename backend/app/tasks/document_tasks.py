@@ -25,8 +25,11 @@ def generate_bol_task(shipment_id: str):
         if not shipment:
             return
             
-        if not os.path.exists(UPLOAD_DIR):
-            os.makedirs(UPLOAD_DIR)
+        try:
+            if not os.path.exists(UPLOAD_DIR):
+                os.makedirs(UPLOAD_DIR, exist_ok=True)
+        except Exception as e:
+            print(f"Warning: Could not create upload directory {UPLOAD_DIR}: {e}")
             
         filename = f"{shipment_id}_bol_generated.pdf"
         file_path = os.path.join(UPLOAD_DIR, filename)
