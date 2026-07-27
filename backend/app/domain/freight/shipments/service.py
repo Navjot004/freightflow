@@ -702,7 +702,7 @@ def get_my_shipments(db: Session, company_id: str, company_type: str, user_id: s
             DriverAssignment.status == DriverAssignmentStatus.ACCEPTED
         ).all()
         shipment_ids = [a.shipment_id for a in assignments]
-        shipments = db.query(Shipment).filter(Shipment.id.in_(shipment_ids)).all()
+        shipments = db.query(Shipment).filter(Shipment.id.in_(shipment_ids)).order_by(Shipment.created_at.desc()).all()
     else:
         shipments = shipment_repository.get_my_shipments(db=db, company_id=company_id, company_type=company_type)
 

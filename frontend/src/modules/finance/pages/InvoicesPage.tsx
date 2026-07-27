@@ -14,10 +14,23 @@ import {
 
 import { CreateInvoiceModal } from '../components/CreateInvoiceModal';
 import { InvoiceDetailModal } from '../components/InvoiceDetailModal';
+import { useAuthStore } from '../../../store/authStore';
 
 export default function InvoicesPage() {
+  const user = useAuthStore(state => state.user);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+
+  if (user?.role?.name === 'DISPATCHER') {
+    return (
+      <div className="p-12 text-center max-w-md mx-auto space-y-3 bg-card border border-border rounded-2xl shadow-sm my-8">
+        <h3 className="text-xl font-bold text-destructive">Access Restricted</h3>
+        <p className="text-sm text-muted-foreground">
+          Dispatchers do not have access to Invoices & Financials. Please contact your Company Administrator or Accounting department.
+        </p>
+      </div>
+    );
+  }
 
   // Active Tab: ISSUED (AR) vs RECEIVED (AP)
   const [activeTab, setActiveTab] = useState<'ISSUED' | 'RECEIVED'>('ISSUED');

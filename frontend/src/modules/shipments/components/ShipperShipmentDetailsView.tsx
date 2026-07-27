@@ -533,7 +533,9 @@ export const ShipperShipmentDetailsView: React.FC<ShipperShipmentDetailsViewProp
                 shipmentStatus={shipment.status}
                 originAddress={load.origin_address}
                 destinationAddress={load.destination_address}
-                currentLocationString={shipment.current_location}
+                currentLocationString={shipment.driver ? (shipment.current_location || 'GPS Active') : 'Awaiting Driver Assignment'}
+                hasDriverAssigned={!!shipment.driver_id || !!shipment.driver}
+                isDriverUser={false}
               />
             </div>
           </CardContent>

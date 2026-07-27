@@ -552,6 +552,8 @@ export default function ShipmentExecutionPage() {
                   originAddress={shipment.load?.origin_address}
                   destinationAddress={shipment.load?.destination_address}
                   currentLocationString={currentLocation}
+                  hasDriverAssigned={!!shipment.driver_id || !!shipment.driver}
+                  isDriverUser={isDriverOrOwner}
                 />
               </div>
             </CardContent>

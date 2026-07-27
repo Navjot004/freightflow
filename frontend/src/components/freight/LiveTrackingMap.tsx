@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Navigation, RefreshCw, Compass } from 'lucide-react';
+import { Navigation, RefreshCw, Compass, AlertTriangle, Radio } from 'lucide-react';
 import { Button } from '../ui/button';
 
 // Custom Leaflet DivIcons to avoid image asset issues
@@ -73,6 +73,8 @@ interface LiveTrackingMapProps {
   originAddress?: string;
   destinationAddress?: string;
   currentLocationString?: string;
+  hasDriverAssigned?: boolean;
+  isDriverUser?: boolean;
 }
 
 export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
@@ -81,7 +83,9 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   shipmentStatus = 'DRIVER_ASSIGNED',
   originAddress,
   destinationAddress,
-  currentLocationString
+  currentLocationString,
+  hasDriverAssigned = true,
+  isDriverUser = false
 }) => {
   const [driverPos, setDriverPos] = useState<[number, number] | null>(null);
   const [pickupPos, setPickupPos] = useState<[number, number] | null>(null);
@@ -91,8 +95,13 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
 
-  // 1. Determine Driver's Live Device Location
+  // 1. Determine Driver's Live Device Location (Strictly for Assigned Driver)
   const locateDriverDevice = useCallback(() => {
+    if (!hasDriverAssigned) {
+      setDriverPos(null);
+      return;
+    }
+
     if (livePoint && !isNaN(Number(livePoint.latitude)) && !isNaN(Number(livePoint.longitude))) {
       setDriverPos([Number(livePoint.latitude), Number(livePoint.longitude)]);
       return;
@@ -106,8 +115,8 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
       }
     }
 
-    // Fallback to browser HTML5 Geolocation
-    if (navigator.geolocation) {
+    // Fallback to browser HTML5 Geolocation ONLY if logged-in user IS the assigned driver
+    if (isDriverUser && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           setDriverPos([pos.coords.latitude, pos.coords.longitude]);
@@ -117,8 +126,11 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
+      return;
     }
-  }, [livePoint, history]);
+
+    setDriverPos(null);
+  }, [hasDriverAssigned, livePoint, history, isDriverUser]);
 
   useEffect(() => {
     locateDriverDevice();
@@ -157,16 +169,21 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
     return () => { isMounted = false; };
   }, [originAddress, destinationAddress]);
 
-  // 3. Calculate OSRM Driving Route based on current active leg
+  // 3. Calculate OSRM Driving Route
   useEffect(() => {
     let isMounted = true;
     const isPickupLeg = ['DRIVER_ASSIGNED', 'DRIVER_ACCEPTED', 'PICKUP_STARTED'].includes(shipmentStatus);
     
     // Target destination for current leg
-    const startCoord = driverPos;
-    const targetCoord = isPickupLeg ? pickupPos : (deliveryPos || pickupPos);
+    const startCoord = driverPos || pickupPos;
+    const targetCoord = driverPos ? (isPickupLeg ? pickupPos : (deliveryPos || pickupPos)) : deliveryPos;
 
-    if (!startCoord || !targetCoord) return;
+    if (!startCoord || !targetCoord) {
+      if (pickupPos && deliveryPos && isMounted) {
+        setBounds(L.latLngBounds([pickupPos, deliveryPos]));
+      }
+      return;
+    }
 
     const fetchOSRMRoute = async () => {
       setLoadingRoute(true);
@@ -187,13 +204,15 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
             setRouteInfo({
               distanceMiles: distMi,
               durationMins: durMins,
-              targetName: isPickupLeg ? `Pickup (${originAddress || 'Origin'})` : `Delivery (${destinationAddress || 'Destination'})`
+              targetName: driverPos
+                ? (isPickupLeg ? `Pickup (${originAddress || 'Origin'})` : `Delivery (${destinationAddress || 'Destination'})`)
+                : `Total Route Path`
             });
 
-            // Calculate bounding box for fitting map
             const allPoints: [number, number][] = [startCoord, targetCoord, ...coords];
-            const newBounds = L.latLngBounds(allPoints);
-            setBounds(newBounds);
+            if (pickupPos) allPoints.push(pickupPos);
+            if (deliveryPos) allPoints.push(deliveryPos);
+            setBounds(L.latLngBounds(allPoints));
           }
         }
       } catch (err) {
@@ -214,17 +233,36 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
 
   return (
     <div className="w-full flex flex-col h-full bg-card rounded-2xl border shadow-sm overflow-hidden">
+      {/* Top Status Banner for Driver Assignment State */}
+      {!hasDriverAssigned && (
+        <div className="p-3 bg-amber-500/90 text-white backdrop-blur-xs flex items-center justify-between text-xs font-semibold px-4 border-b border-amber-400">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-white shrink-0" />
+            <span>Awaiting Driver Assignment — Assign a driver to this shipment to enable live driver GPS tracking.</span>
+          </div>
+        </div>
+      )}
+
+      {hasDriverAssigned && !driverPos && (
+        <div className="p-3 bg-blue-600/90 text-white backdrop-blur-xs flex items-center justify-between text-xs font-semibold px-4 border-b border-blue-500">
+          <div className="flex items-center gap-2">
+            <Radio className="w-4 h-4 text-white animate-pulse shrink-0" />
+            <span>Driver Assigned — Waiting for Driver live GPS signal...</span>
+          </div>
+        </div>
+      )}
+
       {/* Top Map Header Brief */}
       <div className="p-4 border-b bg-muted/50 flex flex-wrap justify-between items-center gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+            <span className={`w-2.5 h-2.5 rounded-full ${driverPos ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
             <h3 className="text-base font-bold text-foreground flex items-center gap-2">
               Real-time Navigation & Route Path
             </h3>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {isPickupLeg ? 'Stage 1: En route to Pickup Facility' : 'Stage 2: En route to Delivery Destination'}
+            {!hasDriverAssigned ? 'Awaiting Driver Assignment' : isPickupLeg ? 'Stage 1: En route to Pickup Facility' : 'Stage 2: En route to Delivery Destination'}
           </p>
         </div>
 

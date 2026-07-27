@@ -38,11 +38,20 @@ export const toApiUrl = (path: string) => {
 
 export const toWebSocketUrl = (path: string) => {
   const configuredBaseUrl = import.meta.env.VITE_WS_BASE_URL;
-  const baseUrl = configuredBaseUrl
-    ? trimTrailingSlash(configuredBaseUrl)
-    : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
+  if (configuredBaseUrl) {
+    return `${trimTrailingSlash(configuredBaseUrl)}/${trimLeadingSlash(path)}`;
+  }
 
-  return `${baseUrl}/${trimLeadingSlash(path)}`;
+  const cleanPath = trimLeadingSlash(path);
+
+  if (apiOrigin) {
+    const wsOrigin = apiOrigin.replace(/^http/, 'ws');
+    return `${wsOrigin}/ws/${cleanPath}`;
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const host = window.location.host;
+  return `${protocol}://${host}/ws/${cleanPath}`;
 };
 
 const api = axios.create({

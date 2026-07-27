@@ -23,19 +23,20 @@ export default function DashboardLayout() {
   const isDriver = !isSuperAdmin && user?.role?.name === 'DRIVER';
   const isDispatcher = user?.role?.name === 'DISPATCHER';
   
-  const canSeeMarketplace = isCarrier || isBroker || isOwnerOperator || isShipper;
+  const canSeeMarketplaceAndBidsTenders = !isDispatcher && (isCarrier || isBroker || isOwnerOperator || isShipper);
+  const canSeeInvoices = !isDispatcher && (isCarrier || isBroker || isShipper || isOwnerOperator);
 
   const navItems = [
     ...(isDriver ? [] : [{ name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }]),
     ...(isCarrier || isBroker || isShipper || isOwnerOperator
         ? [
-            ...(canSeeMarketplace ? [
+            ...(canSeeMarketplaceAndBidsTenders ? [
               { name: 'Marketplace', href: '/marketplace', icon: Truck },
               { name: 'My Bids', href: '/bids/my-bids', icon: Truck },
               { name: 'My Tenders', href: '/tenders/my-tenders', icon: Truck }
             ] : []),
             { name: 'Active Shipments', href: '/shipments/my-shipments', icon: Package },
-            { name: 'Invoices & Financials', href: '/finance/invoices', icon: FileText }
+            ...(canSeeInvoices ? [{ name: 'Invoices & Financials', href: '/finance/invoices', icon: FileText }] : [])
           ]
         : []
     ),
@@ -106,9 +107,11 @@ export default function DashboardLayout() {
           const res = await api.get('/admin/companies/pending');
           if (res.data.length > 0) newBadges['Verify Companies'] = res.data.length;
         } else if (isCarrier || isBroker || isOwnerOperator) {
-          const tendersRes = await api.get('/tenders/me');
-          const pendingTenders = tendersRes.data.filter((t: any) => t.status === 'PENDING').length;
-          if (pendingTenders > 0) newBadges['My Tenders'] = pendingTenders;
+          if (!isDispatcher) {
+            const tendersRes = await api.get('/tenders/me');
+            const pendingTenders = tendersRes.data.filter((t: any) => t.status === 'PENDING').length;
+            if (pendingTenders > 0) newBadges['My Tenders'] = pendingTenders;
+          }
           
           if (isCarrier || isOwnerOperator || isBroker) {
              try {

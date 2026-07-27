@@ -81,7 +81,12 @@ export default function MyShipmentsPage() {
   const fetchShipments = async () => {
     try {
       const data = await ShipmentAPI.getMyShipments();
-      setShipments(data);
+      const sorted = [...(data || [])].sort((a, b) => {
+        const timeA = new Date(a.created_at || a.created_date || 0).getTime();
+        const timeB = new Date(b.created_at || b.created_date || 0).getTime();
+        return timeB - timeA;
+      });
+      setShipments(sorted);
     } catch (err) {
       console.error(err);
     } finally {

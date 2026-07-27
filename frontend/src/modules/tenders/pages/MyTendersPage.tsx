@@ -10,9 +10,23 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { useToast } from '../../../components/ui/Toast';
 import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 
+import { useAuthStore } from '../../../store/authStore';
+
 export default function MyTendersPage() {
+  const user = useAuthStore(state => state.user);
   const [tenders, setTenders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  if (user?.role?.name === 'DISPATCHER') {
+    return (
+      <div className="p-12 text-center max-w-md mx-auto space-y-3 bg-card border border-border rounded-2xl shadow-sm my-8">
+        <h3 className="text-xl font-bold text-destructive">Access Restricted</h3>
+        <p className="text-sm text-muted-foreground">
+          Dispatchers do not have access to Tenders. Please use your Dispatcher Portal for active shipments and fleet management.
+        </p>
+      </div>
+    );
+  }
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     action: 'accept' | 'reject' | null;

@@ -71,6 +71,19 @@ export default function MarketplacePage() {
 
 
 
+  const isDispatcher = user?.role?.name === 'DISPATCHER';
+
+  if (isDispatcher) {
+    return (
+      <div className="p-12 text-center max-w-md mx-auto space-y-3 bg-card border border-border rounded-2xl shadow-sm my-8">
+        <h3 className="text-xl font-bold text-destructive">Access Restricted</h3>
+        <p className="text-sm text-muted-foreground">
+          Dispatchers do not have access to the Load Board / Marketplace. Please use your Dispatcher Portal for active shipments, drivers, and fleet operations.
+        </p>
+      </div>
+    );
+  }
+
   const totalPages = Math.ceil(data.total / limit);
   const canBid = (user?.company?.type === 'CARRIER' || user?.company?.type === 'OWNER_OPERATOR' || user?.company?.type === 'BROKER') && user?.role?.name !== 'DRIVER';
 

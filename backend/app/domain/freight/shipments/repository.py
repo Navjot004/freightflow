@@ -16,11 +16,11 @@ class ShipmentRepository(BaseRepository[Shipment, dict, dict]):
         if company_type == "BROKER":
             return db.query(self.model).join(Load).filter(
                 or_(Load.shipper_id == company_id, self.model.carrier_id == company_id, self.model.broker_id == company_id)
-            ).all()
+            ).order_by(self.model.created_at.desc()).all()
         elif company_type == "SHIPPER":
-            return db.query(self.model).join(Load).filter(Load.shipper_id == company_id).all()
+            return db.query(self.model).join(Load).filter(Load.shipper_id == company_id).order_by(self.model.created_at.desc()).all()
         else:
-            return db.query(self.model).filter(self.model.carrier_id == company_id).all()
+            return db.query(self.model).filter(self.model.carrier_id == company_id).order_by(self.model.created_at.desc()).all()
 
 class ShipmentDocumentRepository(BaseRepository[ShipmentDocument, dict, dict]):
     def get_latest_pod(self, db: Session, *, shipment_id: str) -> Optional[ShipmentDocument]:
