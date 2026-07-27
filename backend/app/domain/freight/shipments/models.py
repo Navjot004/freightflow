@@ -65,6 +65,8 @@ class Shipment(Base):
     load = relationship("Load")
     carrier = relationship("Company", foreign_keys=[carrier_id])
     broker = relationship("Company", foreign_keys=[broker_id])
+    driver_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+    driver = relationship("User", foreign_keys=[driver_id])
     dispatcher_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
     dispatcher = relationship("User", foreign_keys=[dispatcher_id])
     tracking_history = relationship("ShipmentTracking", back_populates="shipment", cascade="all, delete-orphan", order_by="ShipmentTracking.timestamp")

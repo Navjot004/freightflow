@@ -17,8 +17,9 @@ from app.domain.freight.shipments.schemas import PartnerAssignmentCreate
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from app.domain.freight.shipments.repository import shipment_repository, shipment_document_repository, partner_assignment_repository
+from app.core.config import settings
 
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = settings.UPLOAD_DIR
 
 def ensure_upload_dir():
     if not os.path.exists(UPLOAD_DIR):
@@ -176,9 +177,11 @@ def assign_driver(db: Session, shipment_id: str, carrier_id: str, driver_info: D
     shipment.driver_phone = driver_info.driver_phone
     shipment.truck_number = driver_info.truck_number
     
+    shipment.status = ShipmentStatus.DRIVER_ASSIGNED
+    
     # Update Load status
     load = db.query(Load).filter(Load.id == shipment.load_id).first()
-    if load.status == LoadStatus.TENDER_ACCEPTED:
+    if load and load.status == LoadStatus.TENDER_ACCEPTED:
         load.status = LoadStatus.DRIVER_ASSIGNED
         
     db.commit()
@@ -381,24 +384,29 @@ def update_shipment_status(db: Session, shipment_id: str, company_id: str, statu
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found")
         
-    # verify access (either driver or carrier or shipper)
-    if shipment.carrier_id != company_id and getattr(shipment, 'driver_id', None) != user_id:
-        # We need a proper access check, but for now allow assigned driver or carrier
-        pass
+    # verify access (carrier, broker, shipper, or assigned driver)
+    load = db.query(Load).filter(Load.id == shipment.load_id).first()
+    is_authorized = (
+        shipment.carrier_id == company_id or
+        shipment.broker_id == company_id or
+        (load and load.shipper_id == company_id) or
+        shipment.driver_id == user_id
+    )
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized to update status for this shipment")
 
     WorkflowStateEngine.enforce_shipment_transition(shipment.status, status)
 
     shipment.status = status
     
     # Cascade to Load Status
-    load = db.query(Load).filter(Load.id == shipment.load_id).first()
     
     if status == ShipmentStatus.PICKUP_COMPLETED:
-        load.status = LoadStatus.PICKUP_COMPLETED
+        if load: load.status = LoadStatus.PICKUP_COMPLETED
     elif status == ShipmentStatus.IN_TRANSIT:
-        load.status = LoadStatus.IN_TRANSIT
+        if load: load.status = LoadStatus.IN_TRANSIT
     elif status in [ShipmentStatus.DELIVERED, ShipmentStatus.COMPLETED]:
-        load.status = LoadStatus.DELIVERED if status == ShipmentStatus.DELIVERED else LoadStatus.COMPLETED
+        if load: load.status = LoadStatus.DELIVERED if status == ShipmentStatus.DELIVERED else LoadStatus.COMPLETED
         # Free up the driver
         from app.domain.fleet.drivers.models import DriverAssignment, DriverAssignmentStatus, DriverProfile, DriverStatus
         assignment = db.query(DriverAssignment).filter(
@@ -410,11 +418,13 @@ def update_shipment_status(db: Session, shipment_id: str, company_id: str, statu
             if driver_profile:
                 driver_profile.status = DriverStatus.AVAILABLE
     elif status == ShipmentStatus.DISPUTED:
-        load.status = LoadStatus.DISPUTED
+        if load: load.status = LoadStatus.DISPUTED
         
     # Notify Stakeholders
-    create_notification(db, load.shipper_id, "Shipment Status Updated", f"Shipment for Load is now {status}.", NotificationType.INFO, "Shipment", shipment.id, f"/shipments/execute/{shipment.id}")
-    create_notification(db, shipment.carrier_id, "Shipment Status Updated", f"Shipment for Load is now {status}.", NotificationType.INFO, "Shipment", shipment.id, f"/shipments/execute/{shipment.id}")
+    if load and load.shipper_id:
+        create_notification(db, load.shipper_id, "Shipment Status Updated", f"Shipment for Load is now {status}.", NotificationType.INFO, "Shipment", shipment.id, f"/shipments/execute/{shipment.id}")
+    if shipment.carrier_id:
+        create_notification(db, shipment.carrier_id, "Shipment Status Updated", f"Shipment for Load is now {status}.", NotificationType.INFO, "Shipment", shipment.id, f"/shipments/execute/{shipment.id}")
     
     db.commit()
     db.refresh(shipment)
@@ -427,19 +437,44 @@ def update_status(db: Session, shipment_id: str, carrier_id: str, status: LoadSt
         raise HTTPException(status_code=404, detail="Shipment not found")
         
     load = db.query(Load).filter(Load.id == shipment.load_id).first()
-    load.status = status
+    if load: load.status = status
     db.commit()
     db.refresh(shipment)
     return shipment
 
-def update_location(db: Session, shipment_id: str, carrier_id: str, location_info: LocationUpdate):
-    shipment = shipment_repository.get(db=db, id=shipment_id) # relaxed check for driver
+def update_location(db: Session, shipment_id: str, company_id: str, location_info: LocationUpdate, user_id: str = None):
+    shipment = shipment_repository.get(db=db, id=shipment_id)
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found")
+        
+    load = db.query(Load).filter(Load.id == shipment.load_id).first()
+    is_authorized = (
+        shipment.carrier_id == company_id or
+        shipment.broker_id == company_id or
+        (load and load.shipper_id == company_id) or
+        (user_id and shipment.driver_id == user_id)
+    )
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized to update location for this shipment")
         
     shipment.current_location = location_info.current_location
     db.commit()
     db.refresh(shipment)
+
+    # Broadcast WebSocket update
+    payload = {
+        "event": "LOCATION_UPDATE",
+        "data": {
+            "shipment_id": shipment_id,
+            "current_location": shipment.current_location
+        }
+    }
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(manager.broadcast_to_channel(f"shipment:{shipment_id}", payload))
+    except Exception:
+        pass
+
     return shipment
 
 def update_eta(db: Session, shipment_id: str, eta: dt.datetime, delay_reason: str = None):
@@ -459,6 +494,7 @@ def upload_document(db: Session, shipment_id: str, user_id: str, doc_type: str, 
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found")
         
+    doc_type = doc_type.upper() if doc_type else ""
     if doc_type not in ['BOL', 'POD']:
         raise HTTPException(status_code=400, detail="Invalid document type. Must be 'BOL' or 'POD'")
         

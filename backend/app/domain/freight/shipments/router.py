@@ -14,8 +14,9 @@ def get_my_shipments(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get active shipments for Carrier, Shipper, or Driver."""
-    return service.get_my_shipments(db, current_user.company_id, current_user.company.type, current_user.id, current_user.role.name)
+    company_type = current_user.company.type if current_user.company else None
+    role_name = current_user.role.name if current_user.role else None
+    return service.get_my_shipments(db, current_user.company_id, company_type, current_user.id, role_name)
 
 @router.get("/loads/{load_id}/shipment", response_model=schemas.ShipmentResponse)
 def get_shipment_for_load(
@@ -174,7 +175,7 @@ def update_location(
     db: Session = Depends(get_db)
 ):
     """Update current location of shipment."""
-    return service.update_location(db, shipment_id, current_user.company_id, location_info)
+    return service.update_location(db, shipment_id, current_user.company_id, location_info, current_user.id)
 
 @router.patch("/shipments/{shipment_id}/eta", response_model=schemas.ShipmentResponse)
 def update_eta(

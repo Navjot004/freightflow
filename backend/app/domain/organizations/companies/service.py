@@ -193,15 +193,16 @@ def create_invite(db: Session, email: str, role_name: str, company_id: str) -> s
         
     token = secrets.token_urlsafe(32)
     
-    invite = invitation_repository.create(db=db, obj_in=type("MockSchema", (), {
-        "model_dump": lambda: {
-            "email": email,
-            "company_id": company_id,
-            "role_name": role_name,
-            "token": token,
-            "expires_at": datetime.now(timezone.utc) + timedelta(days=7)
-        }
-    })())
+    invite = Invitation(
+        email=email,
+        company_id=company_id,
+        role_name=role_name,
+        token=token,
+        expires_at=datetime.now(timezone.utc) + timedelta(days=7)
+    )
+    db.add(invite)
+    db.commit()
+    db.refresh(invite)
     
     return f"http://localhost:5173/invite/accept?token={token}"
 

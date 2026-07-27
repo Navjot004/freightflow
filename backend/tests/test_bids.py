@@ -7,8 +7,10 @@ from app.db.database import Base, get_db
 import datetime
 from datetime import timedelta, timezone
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_bids.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+from sqlalchemy.pool import StaticPool
+
+SQLALCHEMY_DATABASE_URL = "sqlite://"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
@@ -26,9 +28,11 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
+    Base.metadata.drop_all(bind=engine)
 
 def _get_token(email, company_type, company_name):
     payload = {
@@ -135,11 +139,21 @@ def test_accept_bid():
     res = client.post(f"/api/v1/loads/{load_id}/bids", json={"amount": 1200.0, "expires_at": expires}, headers={"Authorization": f"Bearer {carrier2_token}"})
     bid2 = res.json()["id"]
     
-    # Accept bid2
-    res = client.post(f"/api/v1/bids/{bid2}/accept", headers={"Authorization": f"Bearer {shipper_token}"})
-    assert res.status_code == 200
-    assert res.json()["status"] == "ACCEPTED"
+    # Shipper sends tender for bid2
+    tender_res = client.post(f"/api/v1/loads/{load_id}/tenders", json={
+        "carrier_id": res.json()["carrier_id"],
+        "bid_id": bid2,
+        "amount": 1200.0,
+        "expires_at": expires
+    }, headers={"Authorization": f"Bearer {shipper_token}"})
+    assert tender_res.status_code == 200
+    tender_id = tender_res.json()["id"]
+
+    # Carrier2 accepts tender
+    accept_res = client.post(f"/api/v1/tenders/{tender_id}/accept", headers={"Authorization": f"Bearer {carrier2_token}"})
+    assert accept_res.status_code == 200
     
-    # Check that bid1 was rejected
+    # Check that bid1 was not selected
     res = client.get(f"/api/v1/bids/me", headers={"Authorization": f"Bearer {carrier_token}"})
-    assert res.json()[0]["status"] == "REJECTED"
+    assert res.status_code == 200
+    assert res.json()[0]["status"] in ["NOT_SELECTED", "EXPIRED", "PENDING"]

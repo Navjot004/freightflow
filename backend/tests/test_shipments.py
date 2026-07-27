@@ -8,8 +8,10 @@ from app.db.database import Base, get_db
 import datetime
 from datetime import timedelta, timezone
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_shipments.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+from sqlalchemy.pool import StaticPool
+
+SQLALCHEMY_DATABASE_URL = "sqlite://"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
@@ -27,11 +29,13 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     if not os.path.exists("uploads"):
         os.makedirs("uploads")
     yield
+    Base.metadata.drop_all(bind=engine)
 
 def _get_token(email, company_type, company_name):
     payload = {
@@ -86,8 +90,15 @@ def test_shipment_flow():
     assert res.status_code == 200
     assert res.json()["driver_name"] == "John Doe"
     
-    # 4. Update Status
-    res = client.post(f"/api/v1/shipments/{shipment_id}/status", data={"status": "IN_TRANSIT"}, headers={"Authorization": f"Bearer {carrier_token}"})
+    # 4. Update Status (Progress through lifecycle)
+    r1 = client.patch(f"/api/v1/shipments/{shipment_id}/status", data={"status": "DRIVER_ACCEPTED"}, headers={"Authorization": f"Bearer {carrier_token}"})
+    print("R1:", r1.status_code, r1.json())
+    r2 = client.patch(f"/api/v1/shipments/{shipment_id}/status", data={"status": "PICKUP_STARTED"}, headers={"Authorization": f"Bearer {carrier_token}"})
+    print("R2:", r2.status_code, r2.json())
+    r3 = client.patch(f"/api/v1/shipments/{shipment_id}/status", data={"status": "PICKUP_COMPLETED"}, headers={"Authorization": f"Bearer {carrier_token}"})
+    print("R3:", r3.status_code, r3.json())
+    res = client.patch(f"/api/v1/shipments/{shipment_id}/status", data={"status": "IN_TRANSIT"}, headers={"Authorization": f"Bearer {carrier_token}"})
+    print("R4:", res.status_code, res.json())
     assert res.status_code == 200
     
     # Check Load Status
@@ -95,7 +106,7 @@ def test_shipment_flow():
     assert load_check["status"] == "IN_TRANSIT"
     
     # 5. Update Location
-    res = client.post(f"/api/v1/shipments/{shipment_id}/location", json={"current_location": "St. Louis, MO"}, headers={"Authorization": f"Bearer {carrier_token}"})
+    res = client.patch(f"/api/v1/shipments/{shipment_id}/location", json={"current_location": "St. Louis, MO"}, headers={"Authorization": f"Bearer {carrier_token}"})
     assert res.status_code == 200
     assert res.json()["current_location"] == "St. Louis, MO"
     

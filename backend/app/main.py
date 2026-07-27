@@ -40,7 +40,28 @@ from app.api.websockets import router as websockets_router
 from app.core.exceptions import register_exception_handlers
 
 # Create DB tables
-Base.metadata.create_all(bind=engine) # Enabled for POC to ensure tables exist
+Base.metadata.create_all(bind=engine)
+
+def sync_database_columns():
+    try:
+        from sqlalchemy import text, inspect
+        inspector = inspect(engine)
+        for table_name, table in Base.metadata.tables.items():
+            if inspector.has_table(table_name):
+                existing_cols = {col['name'] for col in inspector.get_columns(table_name)}
+                model_cols = {col.name for col in table.columns}
+                missing = model_cols - existing_cols
+                if missing:
+                    with engine.connect() as conn:
+                        for col_name in missing:
+                            col = table.columns[col_name]
+                            col_type = col.type.compile(engine.dialect)
+                            conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {col_name} {col_type};"))
+                        conn.commit()
+    except Exception as e:
+        print("Column sync warning:", e)
+
+sync_database_columns()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,8 +98,7 @@ app.include_router(compliance_router, prefix=f"{settings.API_V1_STR}/compliance"
 app.include_router(integrations_router, prefix=f"{settings.API_V1_STR}/integrations", tags=["integrations"])
 app.include_router(websockets_router, prefix="/ws", tags=["websockets"])
 
-# Vercel serverless filesystem is read-only except for /tmp
-UPLOAD_DIR = "/tmp/uploads"
+UPLOAD_DIR = settings.UPLOAD_DIR
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 

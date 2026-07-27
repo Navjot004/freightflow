@@ -13,7 +13,9 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 
-UPLOAD_DIR = "uploads"
+from app.core.config import settings
+
+UPLOAD_DIR = settings.UPLOAD_DIR
 
 @celery_app.task
 def generate_bol_task(shipment_id: str):

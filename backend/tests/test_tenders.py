@@ -7,8 +7,10 @@ from app.db.database import Base, get_db
 import datetime
 from datetime import timedelta, timezone
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_tenders.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+from sqlalchemy.pool import StaticPool
+
+SQLALCHEMY_DATABASE_URL = "sqlite://"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
@@ -26,9 +28,11 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
+    Base.metadata.drop_all(bind=engine)
 
 def _get_token(email, company_type, company_name):
     payload = {
@@ -142,6 +146,6 @@ def test_next_bidder():
     assert res3.status_code == 200
     assert res3.json()["amount"] == 1200.0 # It should select the lowest bid
     
-    # Check that bid was accepted (because it became a tender)
+    # Check that bid status was updated to TENDER_SENT
     bid_check = client.get(f"/api/v1/bids/me", headers={"Authorization": f"Bearer {c2_token}"})
-    assert bid_check.json()[0]["status"] == "ACCEPTED"
+    assert bid_check.json()[0]["status"] == "TENDER_SENT"

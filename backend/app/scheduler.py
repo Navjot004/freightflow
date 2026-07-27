@@ -6,7 +6,7 @@ from app.domain.freight.loads.models import Load
 from app.domain.freight.shipments.models import Shipment
 from app.domain.notifications.service import create_notification
 from app.domain.notifications.models import NotificationType
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ scheduler = BackgroundScheduler()
 def check_appointments():
     db = SessionLocal()
     try:
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         # Find active shipments that are not completed or cancelled
         shipments = db.query(Shipment).filter(Shipment.status.in_([
             "DRIVER_ASSIGNED", "DRIVER_ACCEPTED", "PICKUP_STARTED", "IN_TRANSIT"

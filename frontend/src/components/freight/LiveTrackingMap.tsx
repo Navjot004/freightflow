@@ -115,6 +115,18 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
       }
     }
 
+    if (currentLocationString) {
+      try {
+        const parsed = JSON.parse(currentLocationString);
+        if (parsed && !isNaN(Number(parsed.lat)) && !isNaN(Number(parsed.lng))) {
+          setDriverPos([Number(parsed.lat), Number(parsed.lng)]);
+          return;
+        }
+      } catch {
+        // Ignored if plain string address
+      }
+    }
+
     // Fallback to browser HTML5 Geolocation ONLY if logged-in user IS the assigned driver
     if (isDriverUser && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(

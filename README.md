@@ -36,12 +36,21 @@
 - **Role-Aware Security**: Full details exposed to authorized execution parties; public marketplace search masks contact details prior to booking.
 - **High-Visibility UI Cards**: Embedded in `LoadDetailsPage`, `ShipperShipmentDetailsView`, `DriverHeroCard`, and `DriverFacilityCard`.
 
-### 📱 4. Driver Portal & Mobile Execution
-- **Dedicated Driver Interface**: Mobile-first UI for clear operational touch control.
-- **🗺️ Real-Time Navigation & OSRM Routing Engine**:
-  - Live GPS tracking via HTML5 Geolocation & WebSockets.
-  - **Dynamic Leg 1 Pathing**: Driver Current Location ➔ Pickup Facility (Origin).
-  - **Dynamic Leg 2 Pathing**: Driver Current Location ➔ Delivery Destination.
+### 🗺️ 4. Real-Time GPS Telematics & Route Navigation Engine
+- **Strict Driver Telematics Calibration**:
+  - **Assigned Driver Location Only**: Live location maps strictly display the assigned driver's real-time GPS signal (`livePoint`, `trackingHistory`, or `shipment.current_location`).
+  - **Unassigned Driver Map State**: Disables browser HTML5 geolocation fallback for dispatchers/managers, preventing false truck marker movement across the map. Displays an **"Awaiting Driver Assignment"** banner state.
+- **Dynamic OSRM Route Navigation**:
+  - **Leg 1 Pathing**: Driver Current Location ➔ Pickup Facility (Origin).
+  - **Leg 2 Pathing**: Driver Current Location ➔ Delivery Destination.
+- **Direct WebSocket Broadcast**: High-speed `/ws/shipment/{id}` telematics stream for zero-latency vehicle position updates.
+
+### 🔒 5. Role-Based Access Control & Dispatcher Scoping
+- **Dedicated Dispatcher Scope**: Restricts `DISPATCHER` users from Marketplace load bidding, Tender management, and Invoices & Financials.
+- **Active Shipments Sorting**: Chronological default sorting (`created_at` DESC) ensuring new loads and shipments appear at the top of lists by default across all views.
+
+### 📱 6. Driver Portal & Mobile Execution
+- **Dedicated Mobile Interface**: Clean UI built for high-touch operational controls.
 - **⏱️ Hours of Service (HOS) & ELD Compliance**:
   - 11-Hour Driving Limit, 14-Hour Shift Clock, and 70-Hour / 8-Day Duty Cycle tracking.
   - HOS Duty Status Switcher (`DRIVING`, `ON_DUTY_NOT_DRIVING`, `SLEEPER_BERTH`, `OFF_DUTY`).
@@ -49,15 +58,15 @@
   - Camera & document upload for PODs and Bills of Lading (BOL).
   - One-click Shipper **Approve POD & Complete Shipment** or **Reject POD & Open Dispute** control cards.
 
-### 🏢 5. Shipper & Broker Marketplace
+### 🏢 7. Shipper & Broker Marketplace
 - **Load Creation & Tendering**: Create freight loads with origin/destination geocoding, cargo specs, weight, rate, and pickup/delivery windows.
-- **Bidding & Spot Market**: Carriers bid on open loads; Shippers/Brokers accept bids or tender directly to preferred partner carriers.
+- **Bidding & Spot Market**: Carriers & Owner Operators bid on open loads; Shippers/Brokers accept bids or tender directly to preferred partner carriers.
 
-### 🚛 6. Carrier & Fleet Management
+### 🚛 8. Carrier & Fleet Management
 - **Fleet Directory & Driver Allocation**: Manage drivers, track availability (`AVAILABLE`, `ASSIGNED`, `ON_TRIP`, `OFF_DUTY`, `SUSPENDED`), and monitor HOS status.
 - **Searchable Fleet Manager Combobox Dropdown**: Embedded search input (`🔍 Search fleet manager...`) for quick dispatcher selection.
 
-### 🛡️ 7. Super Admin Console
+### 🛡️ 9. Super Admin Console
 - **User Management Portal**: Complete overview of registered platform users and role badging.
 - **Audit Logs & Dispute Resolution**: Platform analytics, company verification, and system audit logs.
 
@@ -72,7 +81,7 @@
 | **State & Routing** | Zustand, React Router v6 | Global state & multi-portal role routing |
 | **Interactive Maps** | React Leaflet, OSRM API | Real-time GPS mapping & driving route geometry |
 | **Backend API** | FastAPI, Python 3.12+ | High-performance async REST & WebSocket server |
-| **Database & ORM** | Neon Serverless PostgreSQL 16, SQLAlchemy 2.0, Alembic | Cloud relational schema & migration management |
+| **Database & ORM** | Neon Serverless PostgreSQL / SQLite, SQLAlchemy 2.0 | Relational schema & declarative ORM model management |
 | **Real-time Telematics** | WebSockets, Redis | Low-latency driver position broadcasts |
 | **Authentication** | JWT (JSON Web Tokens), Passlib (Bcrypt) | Secure role-based authorization |
 
@@ -149,22 +158,23 @@
 | `POST` | `/api/v1/auth/login` | Authenticate user & issue JWT bearer token |
 | `POST` | `/api/v1/auth/signup` | Register new Shipper, Carrier, Broker, or Owner Operator |
 | `GET` | `/api/v1/loads/` | List loads (with role-based scope filtering) |
+| `GET` | `/api/v1/loads/marketplace` | Browse open marketplace loads |
 | `GET` | `/api/v1/loads/{id}` | Get detailed load info & confidential facility appointments |
 | `POST` | `/api/v1/shipments/{id}/assign-partner` | Assign partner with offered pay rate & agreed margin |
 | `POST` | `/api/v1/shipments/{id}/approve-pod` | Shipper one-click POD approval & shipment completion |
 | `POST` | `/api/v1/shipments/{id}/reject-pod` | Shipper POD rejection & dispute initiation |
-| `GET` | `/api/v1/shipments/me` | Fetch shipment execution details with partner masking |
+| `GET` | `/api/v1/shipments/me` | Fetch shipment execution details with partner masking (ordered by `created_at` DESC) |
 | `GET` | `/api/v1/hos/{driver_id}/status` | Fetch driver HOS clocks & duty logs |
-| `WS` | `/ws/live-tracking/{shipment_id}` | WebSocket stream for real-time driver GPS locations |
+| `WS` | `/ws/shipment/{shipment_id}` | WebSocket stream for real-time driver GPS locations |
 
 ---
 
 ## 🧪 Testing & Verification
 
-Run backend test suites (POD workflow, multi-tier margins, partner masking, appointment visibility):
+Run backend test suites (Loads marketplace, POD workflow, multi-tier margins, partner masking, appointment visibility):
 ```bash
 cd backend
-.\venv\Scripts\python -m pytest tests/test_pod_workflow.py tests/test_margin_and_masking.py tests/test_appointment_visibility.py
+.\venv\Scripts\python -m pytest tests/test_loads.py tests/test_pod_workflow.py tests/test_margin_and_masking.py tests/test_appointment_visibility.py
 ```
 
 Run frontend TypeScript compilation & build check:

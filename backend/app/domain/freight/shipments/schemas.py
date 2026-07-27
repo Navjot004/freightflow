@@ -33,6 +33,7 @@ class ShipmentResponse(BaseModel):
     load_id: str
     carrier_id: Optional[str] = None
     broker_id: Optional[str] = None
+    driver_id: Optional[str] = None
     
     shipper_rate: Optional[float] = None
     carrier_rate: Optional[float] = None

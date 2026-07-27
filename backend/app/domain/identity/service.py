@@ -97,10 +97,8 @@ def switch_context(db: Session, current_user: User, company_id: str):
 
 def authenticate_user(db: Session, user_in: UserLogin):
     user = user_repository.get_by_email(db=db, email=user_in.email)
-    if not user:
-        raise HTTPException(status_code=404, detail="User doesn't exist. Please register")
-    if not verify_password(user_in.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not user or not verify_password(user_in.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
     
     access_token = create_access_token(subject=user.id)
     return {"access_token": access_token, "token_type": "bearer", "user": user}

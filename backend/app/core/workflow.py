@@ -19,6 +19,7 @@ class WorkflowStateEngine:
     }
 
     SHIPMENT_TRANSITIONS = {
+        ShipmentStatus.WAITING_FOR_PARTNER_ASSIGNMENT: [ShipmentStatus.WAITING_FOR_DRIVER_ASSIGNMENT, ShipmentStatus.DRIVER_ASSIGNED, ShipmentStatus.COMPLETED],
         ShipmentStatus.WAITING_FOR_DRIVER_ASSIGNMENT: [ShipmentStatus.DRIVER_ASSIGNED, ShipmentStatus.COMPLETED],
         ShipmentStatus.DRIVER_ASSIGNED: [ShipmentStatus.DRIVER_ACCEPTED, ShipmentStatus.WAITING_FOR_DRIVER_ASSIGNMENT],
         ShipmentStatus.DRIVER_ACCEPTED: [ShipmentStatus.PICKUP_STARTED, ShipmentStatus.WAITING_FOR_DRIVER_ASSIGNMENT],
@@ -33,26 +34,40 @@ class WorkflowStateEngine:
 
     @classmethod
     def can_transition_load(cls, current_state: LoadStatus, target_state: LoadStatus) -> bool:
-        allowed = cls.LOAD_TRANSITIONS.get(current_state, [])
-        return target_state in allowed
+        try:
+            curr = LoadStatus(current_state)
+            target = LoadStatus(target_state)
+        except ValueError:
+            return False
+        allowed = cls.LOAD_TRANSITIONS.get(curr, [])
+        return target in allowed
 
     @classmethod
     def enforce_load_transition(cls, current_state: LoadStatus, target_state: LoadStatus):
         if not cls.can_transition_load(current_state, target_state):
+            curr_val = current_state.value if hasattr(current_state, 'value') else str(current_state)
+            target_val = target_state.value if hasattr(target_state, 'value') else str(target_state)
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid state transition for Load: {current_state.value} -> {target_state.value}"
+                detail=f"Invalid state transition for Load: {curr_val} -> {target_val}"
             )
 
     @classmethod
     def can_transition_shipment(cls, current_state: ShipmentStatus, target_state: ShipmentStatus) -> bool:
-        allowed = cls.SHIPMENT_TRANSITIONS.get(current_state, [])
-        return target_state in allowed
+        try:
+            curr = ShipmentStatus(current_state)
+            target = ShipmentStatus(target_state)
+        except ValueError:
+            return False
+        allowed = cls.SHIPMENT_TRANSITIONS.get(curr, [])
+        return target in allowed
 
     @classmethod
     def enforce_shipment_transition(cls, current_state: ShipmentStatus, target_state: ShipmentStatus):
         if not cls.can_transition_shipment(current_state, target_state):
+            curr_val = current_state.value if hasattr(current_state, 'value') else str(current_state)
+            target_val = target_state.value if hasattr(target_state, 'value') else str(target_state)
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid state transition for Shipment: {current_state.value} -> {target_state.value}"
+                detail=f"Invalid state transition for Shipment: {curr_val} -> {target_val}"
             )
