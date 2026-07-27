@@ -33,7 +33,7 @@ def setup_db():
 def _get_token(email, company_type, company_name):
     payload = {
         "email": email,
-        "password": "password123",
+        "password": "strongpassword123",
         "first_name": "Test",
         "last_name": "User",
         "company": {
@@ -43,7 +43,7 @@ def _get_token(email, company_type, company_name):
     }
     signup_res = client.post("/api/v1/auth/signup", json=payload)
     assert signup_res.status_code == 200, f"Signup failed: {signup_res.text}"
-    login_res = client.post("/api/v1/auth/login", json={"email": email, "password": "password123"})
+    login_res = client.post("/api/v1/auth/login", json={"email": email, "password": "strongpassword123"})
     assert login_res.status_code == 200, f"Login failed: {login_res.text}"
     token = login_res.json()["access_token"]
     verify_res = client.post("/api/v1/admin/companies/me/verify", headers={"Authorization": f"Bearer {token}"}) # wait, the endpoint in the file is /companies/me/verify ? No, let me check. Let me just leave it as it was but with asserts.

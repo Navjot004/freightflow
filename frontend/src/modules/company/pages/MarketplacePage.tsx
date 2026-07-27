@@ -72,8 +72,7 @@ export default function MarketplacePage() {
 
 
   const totalPages = Math.ceil(data.total / limit);
-  const isDispatcher = user?.role?.name === 'DISPATCHER';
-  const canBid = !isDispatcher && (user?.company?.type === 'CARRIER' || user?.company?.type === 'OWNER_OPERATOR' || user?.company?.type === 'BROKER');
+  const canBid = (user?.company?.type === 'CARRIER' || user?.company?.type === 'OWNER_OPERATOR' || user?.company?.type === 'BROKER') && user?.role?.name !== 'DRIVER';
 
   return (
     <div className="space-y-6 relative">

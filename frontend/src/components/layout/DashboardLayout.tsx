@@ -23,7 +23,7 @@ export default function DashboardLayout() {
   const isDriver = !isSuperAdmin && user?.role?.name === 'DRIVER';
   const isDispatcher = user?.role?.name === 'DISPATCHER';
   
-  const canSeeMarketplace = (isCarrier && !isDispatcher) || isBroker || isOwnerOperator;
+  const canSeeMarketplace = isCarrier || isBroker || isOwnerOperator || isShipper;
 
   const navItems = [
     ...(isDriver ? [] : [{ name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }]),

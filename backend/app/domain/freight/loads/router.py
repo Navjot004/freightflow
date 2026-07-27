@@ -27,6 +27,20 @@ def get_my_loads(
     """View loads created by the current user's company."""
     return service.get_my_loads(db, current_user.company_id, skip, limit)
 
+@router.get("/marketplace", response_model=schemas.PaginatedMarketplaceLoadResponse)
+def search_marketplace(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    search: Optional[str] = None,
+    equipment_type: Optional[str] = None,
+    sort_by: str = Query("created_at", pattern="^(created_at|pickup_date|weight_lbs)$"),
+    sort_desc: bool = Query(True),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Public load board (all active users can view)."""
+    return service.search_marketplace(db, skip, limit, search, equipment_type, sort_by, sort_desc, current_user.company_id)
+
 @router.get("/{load_id}", response_model=schemas.LoadResponse)
 def get_load_by_id(
     load_id: str,
@@ -54,17 +68,3 @@ def cancel_load(
 ):
     """Cancel a load."""
     return service.cancel_load(db, load_id, current_user.company_id)
-
-@router.get("/marketplace", response_model=schemas.PaginatedMarketplaceLoadResponse)
-def search_marketplace(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-    search: Optional[str] = None,
-    equipment_type: Optional[str] = None,
-    sort_by: str = Query("created_at", pattern="^(created_at|pickup_date|weight_lbs)$"),
-    sort_desc: bool = Query(True),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """Public load board (all active users can view)."""
-    return service.search_marketplace(db, skip, limit, search, equipment_type, sort_by, sort_desc, current_user.company_id)
