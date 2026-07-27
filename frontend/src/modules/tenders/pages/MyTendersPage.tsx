@@ -17,12 +17,14 @@ export default function MyTendersPage() {
   const [tenders, setTenders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  if (user?.role?.name === 'DISPATCHER') {
+  if (user?.role?.name === 'DISPATCHER' || user?.company?.type === 'SHIPPER') {
     return (
       <div className="p-12 text-center max-w-md mx-auto space-y-3 bg-card border border-border rounded-2xl shadow-sm my-8">
         <h3 className="text-xl font-bold text-destructive">Access Restricted</h3>
         <p className="text-sm text-muted-foreground">
-          Dispatchers do not have access to Tenders. Please use your Dispatcher Portal for active shipments and fleet management.
+          {user?.company?.type === 'SHIPPER'
+            ? 'Shippers send tenders to carriers directly from "My Loads".'
+            : 'Dispatchers do not have access to Tenders. Please use your Dispatcher Portal for active shipments and fleet management.'}
         </p>
       </div>
     );

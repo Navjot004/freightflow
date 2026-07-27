@@ -23,18 +23,22 @@ export default function DashboardLayout() {
   const isDriver = !isSuperAdmin && user?.role?.name === 'DRIVER';
   const isDispatcher = user?.role?.name === 'DISPATCHER';
   
-  const canSeeMarketplaceAndBidsTenders = !isDispatcher && (isCarrier || isBroker || isOwnerOperator || isShipper);
+  const canSeeMarketplace = !isDispatcher && (isCarrier || isBroker || isOwnerOperator || isShipper);
+  const canSeeBidsAndTenders = !isDispatcher && (isCarrier || isBroker || isOwnerOperator);
   const canSeeInvoices = !isDispatcher && (isCarrier || isBroker || isShipper || isOwnerOperator);
 
   const navItems = [
     ...(isDriver ? [] : [{ name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }]),
+    ...(canSeeMarketplace ? [{ name: 'Marketplace', href: '/marketplace', icon: Truck }] : []),
+    ...(canSeeBidsAndTenders
+        ? [
+            { name: 'My Bids', href: '/bids/my-bids', icon: Truck },
+            { name: 'My Tenders', href: '/tenders/my-tenders', icon: Truck }
+          ]
+        : []
+    ),
     ...(isCarrier || isBroker || isShipper || isOwnerOperator
         ? [
-            ...(canSeeMarketplaceAndBidsTenders ? [
-              { name: 'Marketplace', href: '/marketplace', icon: Truck },
-              { name: 'My Bids', href: '/bids/my-bids', icon: Truck },
-              { name: 'My Tenders', href: '/tenders/my-tenders', icon: Truck }
-            ] : []),
             { name: 'Active Shipments', href: '/shipments/my-shipments', icon: Package },
             ...(canSeeInvoices ? [{ name: 'Invoices & Financials', href: '/finance/invoices', icon: FileText }] : [])
           ]
