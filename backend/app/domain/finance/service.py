@@ -88,3 +88,77 @@ def create_settlement(db: Session, settlement_in: SettlementCreate) -> Settlemen
 
 def get_company_settlements(db: Session, company_id: str):
     return settlement_repository.get_by_company(db=db, carrier_id=company_id)
+
+def generate_invoices_for_completed_shipment(db: Session, shipment_id: str):
+    from app.domain.freight.shipments.models import Shipment
+    from app.domain.freight.loads.models import Load
+    from app.domain.identity.models import Company, CompanyType
+    from app.domain.finance.models import InvoiceRelationshipType
+    
+    shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+    if not shipment:
+        return
+        
+    load = db.query(Load).filter(Load.id == shipment.load_id).first()
+    if not load:
+        return
+        
+    existing = db.query(Invoice).filter(Invoice.shipment_id == shipment.id).first()
+    if existing:
+        return
+
+    year = datetime.now().year
+    
+    # 1. Primary Carrier / Broker invoice to Shipper
+    primary_carrier_id = shipment.broker_id or shipment.carrier_id
+    shipper_id = load.shipper_id
+    shipper_rate = shipment.shipper_rate or load.rate or 0.0
+    
+    if primary_carrier_id and shipper_id and shipper_rate > 0:
+        primary_company = db.query(Company).filter(Company.id == primary_carrier_id).first()
+        rel_type = InvoiceRelationshipType.BROKER_TO_SHIPPER if (primary_company and primary_company.type == CompanyType.BROKER) else InvoiceRelationshipType.CARRIER_TO_SHIPPER
+        
+        inv1 = Invoice(
+            invoice_number=f"INV-{year}-{uuid.uuid4().hex[:6].upper()}",
+            issuer_company_id=primary_carrier_id,
+            recipient_company_id=shipper_id,
+            relationship_type=rel_type,
+            load_id=load.id,
+            shipment_id=shipment.id,
+            linehaul_amount=shipper_rate,
+            amount=shipper_rate,
+            status=InvoiceStatus.ISSUED
+        )
+        db.add(inv1)
+
+    # 2. Subcontracted Partner invoice to Primary Carrier / Broker
+    subcontracted_partner_id = shipment.carrier_id if shipment.broker_id else (shipment.carrier_id if shipment.partner_rate else None)
+    partner_rate = shipment.partner_rate or shipment.carrier_rate or 0.0
+    
+    if subcontracted_partner_id and primary_carrier_id and subcontracted_partner_id != primary_carrier_id and partner_rate > 0:
+        partner_company = db.query(Company).filter(Company.id == subcontracted_partner_id).first()
+        if partner_company and partner_company.type == CompanyType.OWNER_OPERATOR:
+            p_rel_type = InvoiceRelationshipType.OWNER_OPERATOR_TO_CARRIER if shipment.broker_id is None else InvoiceRelationshipType.OWNER_OPERATOR_TO_BROKER
+        elif partner_company and partner_company.type == CompanyType.CARRIER:
+            p_rel_type = InvoiceRelationshipType.CARRIER_TO_CARRIER if shipment.broker_id is None else InvoiceRelationshipType.CARRIER_TO_BROKER
+        else:
+            p_rel_type = InvoiceRelationshipType.CARRIER_TO_BROKER
+            
+        inv2 = Invoice(
+            invoice_number=f"INV-{year}-{uuid.uuid4().hex[:6].upper()}",
+            issuer_company_id=subcontracted_partner_id,
+            recipient_company_id=primary_carrier_id,
+            relationship_type=p_rel_type,
+            load_id=load.id,
+            shipment_id=shipment.id,
+            linehaul_amount=partner_rate,
+            amount=partner_rate,
+            status=InvoiceStatus.ISSUED
+        )
+        db.add(inv2)
+        
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Failed to auto-generate invoices: {e}")

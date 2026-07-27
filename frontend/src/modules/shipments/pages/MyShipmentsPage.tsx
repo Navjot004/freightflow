@@ -139,10 +139,22 @@ export default function MyShipmentsPage() {
     const initialRate = shipment.carrier_rate || shipment.shipper_rate || shipment.load?.rate || '';
     setAssignmentRate(initialRate);
     try {
-      let partners = await PartnerAssignmentAPI.getAvailablePartners();
-      if (!partners || partners.length === 0) {
-        const res = await api.get('/transportation-partners');
-        partners = res.data;
+      let partners: any[] = [];
+      try {
+        const netRes = await api.get('/transportation-partnerships/network');
+        if (Array.isArray(netRes.data) && netRes.data.length > 0) {
+          partners = netRes.data;
+        }
+      } catch (err) {
+        console.error("Failed to load partnership network", err);
+      }
+
+      if (partners.length === 0) {
+        partners = await PartnerAssignmentAPI.getAvailablePartners();
+        if (!partners || partners.length === 0) {
+          const res = await api.get('/transportation-partners');
+          partners = res.data;
+        }
       }
       setAvailablePartners(partners);
     } catch (error) {
@@ -444,11 +456,26 @@ export default function MyShipmentsPage() {
                       {/* CARRIER ACTIONS */}
                       {isCarrier && (
                         <>
-                          {(s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load?.status === 'TENDER_ACCEPTED') && (
-                            <Button size="sm" onClick={() => { setAssignDriverShipment(s); setSelectedDriverId(''); setDriverAssignmentNotes(''); }}>
-                              Assign Driver
-                            </Button>
-                          )}
+                          {isPartnerPending ? (
+                            <span className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              Subcontract Requested ({partnerName})
+                            </span>
+                          ) : hasAssignedCarrier ? (
+                            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              Subcontracted: {partnerName}
+                            </span>
+                          ) : (s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load?.status === 'TENDER_ACCEPTED') ? (
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" onClick={() => { setAssignDriverShipment(s); setSelectedDriverId(''); setDriverAssignmentNotes(''); }}>
+                                Assign Fleet Driver
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleOpenAssignPartner(s)} className="border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-semibold dark:hover:bg-emerald-950/30">
+                                Subcontract to Partner
+                              </Button>
+                            </div>
+                          ) : null}
 
                           {s.status !== 'COMPLETED' && s.status !== 'CANCELLED' && (
                              user?.role?.name === 'DISPATCHER' ? (
@@ -710,6 +737,27 @@ export default function MyShipmentsPage() {
                           )}
                           {isCarrier && s.status !== 'COMPLETED' && s.status !== 'CANCELLED' && (
                             <>
+                              {isPartnerPending ? (
+                                <span className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                                  Subcontract Requested ({partnerName})
+                                </span>
+                              ) : hasAssignedCarrier ? (
+                                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  Subcontracted ({partnerName})
+                                </span>
+                              ) : (s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load.status === 'TENDER_ACCEPTED') ? (
+                                <div className="flex items-center gap-1.5">
+                                  <Button size="sm" onClick={() => { setAssignDriverShipment(s); setSelectedDriverId(''); setDriverAssignmentNotes(''); }}>
+                                    Assign Driver
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => handleOpenAssignPartner(s)} className="border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-semibold dark:hover:bg-emerald-950/30">
+                                    Subcontract
+                                  </Button>
+                                </div>
+                              ) : null}
+
                               {user?.role?.name === 'DISPATCHER' ? (
                                 !s.dispatcher_id ? (
                                   <Button size="sm" onClick={() => handleClaimLoad(s.id)} variant="secondary">Claim Load</Button>
@@ -717,16 +765,9 @@ export default function MyShipmentsPage() {
                                   <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded border border-green-200 self-center font-medium">Your Load</span>
                                 ) : null
                               ) : (
-                                <>
-                                  {(s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load.status === 'TENDER_ACCEPTED') && (
-                                    <Button size="sm" onClick={() => { setAssignDriverShipment(s); setSelectedDriverId(''); setDriverAssignmentNotes(''); }}>
-                                      Assign Driver
-                                    </Button>
-                                  )}
-                                  <Button size="sm" onClick={() => { setAssignDispatcherShipment(s); setSelectedDispatcherId(s.dispatcher_id || ''); }} variant="secondary">
-                                    {s.dispatcher_id ? 'Change Dispatcher' : 'Assign Dispatcher'}
-                                  </Button>
-                                </>
+                                <Button size="sm" onClick={() => { setAssignDispatcherShipment(s); setSelectedDispatcherId(s.dispatcher_id || ''); }} variant="secondary">
+                                  {s.dispatcher_id ? 'Change Dispatcher' : 'Assign Dispatcher'}
+                                </Button>
                               )}
                             </>
                           )}

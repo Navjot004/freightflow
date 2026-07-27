@@ -660,6 +660,9 @@ def approve_pod(db: Session, shipment_id: str, shipper_id: str):
     # Complete Shipment
     update_shipment_status(db, shipment.id, shipper_id, ShipmentStatus.COMPLETED, shipper_id)
     
+    from app.domain.finance.service import generate_invoices_for_completed_shipment
+    generate_invoices_for_completed_shipment(db, shipment.id)
+    
     db.commit()
     return shipment
 
