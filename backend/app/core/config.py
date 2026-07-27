@@ -11,11 +11,10 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     LOG_LEVEL: str = "INFO"
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
-    BACKEND_CORS_ORIGINS: str = (
-    "http://localhost:5173,"
-    "http://127.0.0.1:5173,"
-    "https://freightflow-opal.vercel.app"
-)
+    BACKEND_CORS_ORIGINS: str = os.getenv(
+        "BACKEND_CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,https://freightflow-opal.vercel.app,http://localhost:3000"
+    )
 
     @property
     def cors_origins(self) -> list[str]:
