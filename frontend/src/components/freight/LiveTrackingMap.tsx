@@ -252,8 +252,6 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   // Default fallback center
   const defaultCenter: [number, number] = driverPos || pickupPos || deliveryPos || [39.8283, -98.5795];
 
-  const isPickupLeg = ['DRIVER_ASSIGNED', 'DRIVER_ACCEPTED', 'PICKUP_STARTED'].includes(shipmentStatus);
-
   return (
     <div className="w-full flex flex-col h-full bg-card text-foreground rounded-2xl border shadow-sm overflow-hidden">
       {/* Top Status Banner for Driver Assignment State */}

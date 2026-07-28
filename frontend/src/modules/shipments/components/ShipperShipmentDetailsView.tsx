@@ -9,7 +9,7 @@ import { ShipmentAPI } from '../api';
 import {
   MapPin, Truck, Package, Clock, DollarSign, FileText, CheckCircle2,
   Radio, RefreshCw, ArrowLeft, Building2, Mail,
-  User, ShieldCheck, XCircle
+  ShieldCheck, XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
