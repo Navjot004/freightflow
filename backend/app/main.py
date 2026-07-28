@@ -3,9 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from contextlib import asynccontextmanager
-from app.scheduler import scheduler
 from app.core.config import settings
-from app.db.database import engine, Base
+from app.db.database import engine, Base, IS_SERVERLESS
 from app.domain.identity.router import router as auth_router
 from app.domain.organizations.companies.router import router as companies_router
 from app.domain.freight.loads.router import router as loads_router
@@ -39,8 +38,9 @@ from app.api.websockets import router as websockets_router
 
 from app.core.exceptions import register_exception_handlers
 
-# Create DB tables
-Base.metadata.create_all(bind=engine)
+# --- Performance: Skip heavy DDL operations on serverless (tables already exist in Neon) ---
+if not IS_SERVERLESS:
+    Base.metadata.create_all(bind=engine)
 
 def sync_database_columns():
     try:
@@ -61,13 +61,19 @@ def sync_database_columns():
     except Exception as e:
         print("Column sync warning:", e)
 
-sync_database_columns()
+if not IS_SERVERLESS:
+    sync_database_columns()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler.start()
+    # Only start scheduler on persistent servers (not serverless)
+    if not IS_SERVERLESS:
+        from app.scheduler import scheduler
+        scheduler.start()
     yield
-    scheduler.shutdown()
+    if not IS_SERVERLESS:
+        from app.scheduler import scheduler
+        scheduler.shutdown()
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
