@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Navigation, RefreshCw, Compass, AlertTriangle, Radio, PackageCheck } from 'lucide-react';
+import { Navigation, RefreshCw, Compass, AlertTriangle, Radio, PackageCheck, CheckCircle2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useAuthStore } from '../../store/authStore';
 
@@ -59,30 +59,16 @@ const deliveryIcon = L.divIcon({
 const MapFitter = ({ bounds }: { bounds: L.LatLngBounds | null }) => {
   const map = useMap();
   useEffect(() => {
-    if (bounds && bounds.isValid()) {
-      const timer = setTimeout(() => {
-        map.invalidateSize();
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-      }, 300);
-      return () => clearTimeout(timer);
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [50, 50] });
     }
   }, [bounds, map]);
   return null;
 };
 
-interface TrackingPoint {
-  id?: string;
-  latitude: string | number;
-  longitude: string | number;
-  speed?: string | number;
-  heading?: string | number;
-  accuracy?: string | number;
-  timestamp?: string;
-}
-
 interface LiveTrackingMapProps {
-  history?: TrackingPoint[];
-  livePoint?: TrackingPoint | null;
+  history?: Array<{ latitude: number; longitude: number; timestamp?: string }>;
+  livePoint?: { latitude: number; longitude: number; timestamp?: string };
   shipmentStatus?: string;
   originAddress?: string;
   destinationAddress?: string;
@@ -113,11 +99,10 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   const [loadingRoute, setLoadingRoute] = useState(false);
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
 
-  // Check if cargo has been picked up
-  const isCargoLoaded = ['PICKUP_COMPLETED', 'IN_TRANSIT', 'DELIVERED', 'POD_UPLOADED', 'COMPLETED'].includes(shipmentStatus);
+  const isDelivered = ['DELIVERED', 'POD_SUBMITTED', 'POD_UPLOADED', 'COMPLETED', 'CLOSED'].includes((shipmentStatus || '').toUpperCase());
+  const isCargoLoaded = ['PICKUP_COMPLETED', 'IN_TRANSIT', 'DELIVERED', 'POD_SUBMITTED', 'POD_UPLOADED', 'COMPLETED', 'CLOSED'].includes((shipmentStatus || '').toUpperCase());
   const activeTruckIcon = isCargoLoaded ? loadedTruckIcon : emptyTruckIcon;
 
-  // 1. Determine Driver's Live Location
   const locateDriverDevice = useCallback(() => {
     if (!hasDriverAssigned) {
       setDriverPos(null);
@@ -137,106 +122,87 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
       }
     }
 
-    // Default driver start position near pickup if device position not active
-    if (isDriverUser && 'geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setDriverPos([pos.coords.latitude, pos.coords.longitude]);
-        },
-        (err) => {
-          console.warn("Geolocation permission or position error:", err.message);
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
-      );
+    if (pickupPos) {
+      setDriverPos([pickupPos[0] + 0.005, pickupPos[1] + 0.005]);
     }
-  }, [hasDriverAssigned, livePoint, history, isDriverUser]);
+  }, [hasDriverAssigned, livePoint, history, pickupPos]);
+
+  useEffect(() => {
+    if (!originAddress) return;
+    const fetchOrigin = async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(originAddress)}`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setPickupPos([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        }
+      } catch (err) {
+        console.error("Geocoding origin error:", err);
+      }
+    };
+    fetchOrigin();
+  }, [originAddress]);
+
+  useEffect(() => {
+    if (!destinationAddress) return;
+    const fetchDestination = async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destinationAddress)}`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setDeliveryPos([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        }
+      } catch (err) {
+        console.error("Geocoding destination error:", err);
+      }
+    };
+    fetchDestination();
+  }, [destinationAddress]);
 
   useEffect(() => {
     locateDriverDevice();
   }, [locateDriverDevice]);
 
-  // 2. Geocode Origin & Destination
+  useEffect(() => {
+    const validCoords: [number, number][] = [];
+    if (driverPos && !isDelivered) validCoords.push(driverPos);
+    if (pickupPos) validCoords.push(pickupPos);
+    if (deliveryPos) validCoords.push(deliveryPos);
+
+    if (validCoords.length > 0) {
+      const newBounds = L.latLngBounds(validCoords);
+      setBounds(newBounds);
+    }
+  }, [driverPos, pickupPos, deliveryPos, isDelivered]);
+
   useEffect(() => {
     let isMounted = true;
-
-    const geocodeAddress = async (addr: string): Promise<[number, number] | null> => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`);
-        const data = await res.json();
-        if (data && data.length > 0) {
-          return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-        }
-      } catch (err) {
-        console.error("Geocoding failed for address:", addr, err);
-      }
-      return null;
-    };
-
-    const resolveLocations = async () => {
-      let pPos: [number, number] | null = null;
-      let dPos: [number, number] | null = null;
-
-      if (originAddress) {
-        pPos = await geocodeAddress(originAddress);
-      }
-      if (destinationAddress) {
-        dPos = await geocodeAddress(destinationAddress);
-      }
-
-      // Default fallbacks if geocoding yields no result
-      if (!pPos) pPos = [34.0522, -118.2437]; // Los Angeles default
-      if (!dPos) dPos = [37.7749, -122.4194]; // San Francisco default
-
-      if (isMounted) {
-        setPickupPos(pPos);
-        setDeliveryPos(dPos);
-      }
-    };
-
-    resolveLocations();
-
-    return () => { isMounted = false; };
-  }, [originAddress, destinationAddress]);
-
-  // 3. Calculate Driving Route & Bounds
-  useEffect(() => {
-    let isMounted = true;
-    if (!pickupPos || !deliveryPos) return;
-
-    const targetPos = ['DRIVER_ASSIGNED', 'DRIVER_ACCEPTED', 'PICKUP_STARTED'].includes(shipmentStatus)
-      ? pickupPos
-      : deliveryPos;
-
-    const startPos = driverPos || pickupPos;
-
-    const newBounds = L.latLngBounds([startPos, targetPos]);
-    if (driverPos) newBounds.extend(driverPos);
-    if (pickupPos) newBounds.extend(pickupPos);
-    if (deliveryPos) newBounds.extend(deliveryPos);
-    setBounds(newBounds);
-
     const fetchOSRMRoute = async () => {
-      setLoadingRoute(true);
+      const startCoord = isDelivered ? pickupPos : (driverPos || pickupPos);
+      const targetCoord = deliveryPos;
+
+      if (!startCoord || !targetCoord) return;
+
       try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${startPos[1]},${startPos[0]};${targetPos[1]},${targetPos[0]}?overview=full&geometries=geojson`;
+        setLoadingRoute(true);
+        const url = `https://router.project-osrm.org/route/v1/driving/${startCoord[1]},${startCoord[0]};${targetCoord[1]},${targetCoord[0]}?overview=full&geometries=geojson`;
         const res = await fetch(url);
         const data = await res.json();
 
-        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        if (isMounted && data.routes && data.routes.length > 0) {
           const route = data.routes[0];
-          const coords: [number, number][] = route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+          const coordinates: [number, number][] = route.geometry.coordinates.map(
+            (c: [number, number]) => [c[1], c[0]]
+          );
+          setRoutePath(coordinates);
 
-          if (isMounted) {
-            setRoutePath(coords);
-            const distMiles = (route.distance * 0.000621371).toFixed(1);
-            const durMins = Math.round(route.duration / 60);
-
-            setRouteInfo({
-              distanceMiles: distMiles,
-              durationMins: durMins.toString(),
-              targetName: targetPos === pickupPos ? 'Pickup Facility' : 'Destination Facility'
-            });
-          }
+          const distanceMi = (route.distance / 1609.34).toFixed(1);
+          const durationM = Math.round(route.duration / 60).toString();
+          setRouteInfo({
+            distanceMiles: distanceMi,
+            durationMins: durationM,
+            targetName: 'Destination Facility'
+          });
         }
       } catch (err) {
         console.error("OSRM Route calculation error:", err);
@@ -247,15 +213,22 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
 
     fetchOSRMRoute();
     return () => { isMounted = false; };
-  }, [driverPos, pickupPos, deliveryPos, shipmentStatus, originAddress, destinationAddress]);
+  }, [driverPos, pickupPos, deliveryPos, shipmentStatus, originAddress, destinationAddress, isDelivered]);
 
-  // Default fallback center
-  const defaultCenter: [number, number] = driverPos || pickupPos || deliveryPos || [39.8283, -98.5795];
+  const defaultCenter: [number, number] = (isDelivered ? (deliveryPos || pickupPos) : (driverPos || pickupPos || deliveryPos)) || [39.8283, -98.5795];
 
   return (
     <div className="w-full flex flex-col h-full bg-card text-foreground rounded-2xl border shadow-sm overflow-hidden">
-      {/* Top Status Banner for Driver Assignment State */}
-      {!hasDriverAssigned && (
+      {isDelivered ? (
+        <div className="p-3 bg-emerald-600 text-white backdrop-blur-xs flex items-center justify-between text-xs font-semibold px-4 border-b border-emerald-500">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-white shrink-0" />
+            <span>
+              Shipment Delivered — Freight has arrived at destination and delivery/POD is completed.
+            </span>
+          </div>
+        </div>
+      ) : !hasDriverAssigned ? (
         <div className="p-3 bg-amber-500/90 text-white backdrop-blur-xs flex items-center justify-between text-xs font-semibold px-4 border-b border-amber-400">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-white shrink-0" />
@@ -266,9 +239,7 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
             </span>
           </div>
         </div>
-      )}
-
-      {hasDriverAssigned && !driverPos && (
+      ) : !driverPos ? (
         <div className="p-3 bg-blue-600/90 text-white backdrop-blur-xs flex items-center justify-between text-xs font-semibold px-4 border-b border-blue-500">
           <div className="flex items-center gap-2">
             <Radio className="w-4 h-4 text-white animate-pulse shrink-0" />
@@ -281,24 +252,29 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
             </span>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Top Map Header Brief */}
       <div className="p-4 border-b bg-muted/50 flex flex-wrap justify-between items-center gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${driverPos ? (isCargoLoaded ? 'bg-emerald-500 animate-ping' : 'bg-blue-500 animate-ping') : 'bg-amber-500'}`} />
+            <span className={`w-2.5 h-2.5 rounded-full ${isDelivered ? 'bg-emerald-500' : driverPos ? (isCargoLoaded ? 'bg-emerald-500 animate-ping' : 'bg-blue-500 animate-ping') : 'bg-amber-500'}`} />
             <h3 className="text-base font-bold text-foreground flex items-center gap-2">
               Real-time Navigation & Route Path
             </h3>
-            {isCargoLoaded && (
+            {isDelivered ? (
+              <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Delivered & Completed
+              </span>
+            ) : isCargoLoaded ? (
               <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 rounded-full flex items-center gap-1">
                 <PackageCheck className="w-3 h-3" /> Freight On Board
               </span>
-            )}
+            ) : null}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {!hasDriverAssigned
+            {isDelivered
+              ? 'Shipment Delivered & Completed — Driver finished trip'
+              : !hasDriverAssigned
               ? 'Awaiting Driver Assignment'
               : !driverPos
               ? `Driver Assigned ${driverName ? `(${driverName})` : ''} — Awaiting trip start`
@@ -327,10 +303,8 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
         </Button>
       </div>
 
-      {/* Map Container */}
       <div className="flex-1 relative" style={{ height: '480px' }}>
         <MapContainer center={defaultCenter} zoom={12} style={{ height: '100%', width: '100%', zIndex: 0 }}>
-          {/* Standard OpenStreetMap Tile Layer */}
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -338,8 +312,7 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
 
           {bounds && <MapFitter bounds={bounds} />}
 
-          {/* 1. Driver Location Marker (Dynamic Empty vs Cargo Loaded Icon) */}
-          {driverPos && (
+          {driverPos && !isDelivered && (
             <Marker position={driverPos} icon={activeTruckIcon}>
               <Popup>
                 <div className="p-1 text-xs">
@@ -354,7 +327,6 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
             </Marker>
           )}
 
-          {/* 2. Pickup Warehouse Origin Location Marker */}
           {pickupPos && (
             <Marker position={pickupPos} icon={pickupIcon}>
               <Popup>
@@ -363,17 +335,11 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
                     🏭 Warehouse Origin (Pickup Facility)
                   </div>
                   <div className="mt-1 text-slate-700">{originAddress || 'Origin Warehouse'}</div>
-                  {isCargoLoaded && (
-                    <div className="mt-1 text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                      ✓ Cargo Picked Up & Dispatched
-                    </div>
-                  )}
                 </div>
               </Popup>
             </Marker>
           )}
 
-          {/* 3. Delivery Facility Destination Location Marker */}
           {deliveryPos && (
             <Marker position={deliveryPos} icon={deliveryIcon}>
               <Popup>
@@ -382,12 +348,16 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
                     🎯 Destination Receiving Facility
                   </div>
                   <div className="mt-1 text-slate-700">{destinationAddress || 'Destination Facility'}</div>
+                  {isDelivered && (
+                    <div className="mt-1 text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                      ✓ Shipment Delivered & POD Verified
+                    </div>
+                  )}
                 </div>
               </Popup>
             </Marker>
           )}
 
-          {/* 4. Active Real-time Driving Route Line */}
           {routePath.length > 0 && (
             <Polyline
               positions={routePath}
