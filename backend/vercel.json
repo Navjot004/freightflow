@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "regions": ["sin1"],
   "builds": [
     {
       "src": "api/index.py",
@@ -10,12 +9,6 @@
       }
     }
   ],
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30,
-      "memory": 1024
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
