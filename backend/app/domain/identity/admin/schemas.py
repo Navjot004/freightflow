@@ -19,3 +19,6 @@ class AnalyticsResponse(BaseModel):
     pending_companies: int
     total_loads: int
     active_disputes: int
+
+class AdminPasswordResetRequest(BaseModel):
+    new_password: str

@@ -100,6 +100,9 @@ def authenticate_user(db: Session, user_in: UserLogin):
     if not user or not verify_password(user_in.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
+    if hasattr(user, 'is_active') and not user.is_active:
+        raise HTTPException(status_code=403, detail="Account has been suspended by an administrator")
+    
     access_token = create_access_token(subject=user.id)
     return {"access_token": access_token, "token_type": "bearer", "user": user}
 

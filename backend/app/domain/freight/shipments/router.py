@@ -27,6 +27,24 @@ def get_shipment_for_load(
     """Get the shipment execution record for a load."""
     return service.get_shipment_for_load(db, load_id, current_user.company_id, current_user.company.type)
 
+@router.get("/shipments/{shipment_id}", response_model=schemas.ShipmentResponse)
+def get_shipment_by_id(
+    shipment_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    company_type = current_user.company.type if current_user.company else None
+    role_name = current_user.role.name if current_user.role else None
+    return service.get_shipment_by_id(db, shipment_id, current_user.company_id, company_type, role_name)
+
+@router.post("/shipments/{shipment_id}/generate-bol", response_model=schemas.ShipmentResponse)
+def generate_bol_endpoint(
+    shipment_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    return service.force_generate_bol(db, shipment_id)
+
 @router.post("/shipments/{shipment_id}/assign-partner", response_model=schemas.PartnerAssignmentResponse)
 def assign_partner(
     shipment_id: str,

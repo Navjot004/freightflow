@@ -14,6 +14,10 @@ class Settings(BaseSettings):
         "UPLOAD_DIR",
         "/tmp/uploads" if (os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")) else "uploads"
     )
+    BLOB_READ_WRITE_TOKEN: str = os.getenv(
+        "BLOB_READ_WRITE_TOKEN",
+        os.getenv("VERCEL_BLOB_READ_WRITE_TOKEN", "")
+    )
     BACKEND_CORS_ORIGINS: str = os.getenv(
         "BACKEND_CORS_ORIGINS",
         "http://localhost:5173,http://127.0.0.1:5173,https://freightflow-opal.vercel.app,http://localhost:3000"

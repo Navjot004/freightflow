@@ -55,6 +55,15 @@ def toggle_user_status(
 ):
     return service.toggle_user_status(db, user_id, current_user.id)
 
+@router.post("/users/{user_id}/reset-password")
+def reset_user_password(
+    user_id: str,
+    body: schemas.AdminPasswordResetRequest,
+    current_user: User = Depends(RequireRole(["SUPER_ADMIN"])),
+    db: Session = Depends(get_db)
+):
+    return service.reset_user_password(db, user_id, body.new_password, current_user.id)
+
 @router.get("/audit-logs", response_model=List[schemas.AuditLogResponse])
 def get_audit_logs(
     current_user: User = Depends(RequireRole(["SUPER_ADMIN"])),

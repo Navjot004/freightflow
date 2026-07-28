@@ -79,13 +79,30 @@ def generate_bol_task(shipment_id: str):
         # Build the PDF
         pdf_doc.build(elements)
         
-        url_path = f"/api/v1/uploads/{filename}"
+        with open(file_path, "rb") as f:
+            pdf_bytes = f.read()
+
+        from app.core.blob_storage import upload_blob
+        url_path = upload_blob(filename, pdf_bytes, "application/pdf")
         
+        uploader_id = shipment.driver_id or shipment.dispatcher_id
+        if not uploader_id and shipment.carrier_id:
+            from app.domain.identity.models import User
+            carrier_user = db.query(User).filter(User.company_id == shipment.carrier_id).first()
+            if carrier_user:
+                uploader_id = carrier_user.id
+        
+        if not uploader_id:
+            from app.domain.identity.models import User
+            any_user = db.query(User).first()
+            if any_user:
+                uploader_id = any_user.id
+
         doc = ShipmentDocument(
             shipment_id=shipment.id,
             document_type='BOL',
             file_path=url_path,
-            uploaded_by=shipment.carrier_id,
+            uploaded_by=uploader_id,
             status=DocumentStatus.VERIFIED
         )
         db.add(doc)
@@ -186,10 +203,17 @@ def generate_pod_pdf_task(
         
         try:
             from PIL import Image
-            img = Image.open(sig_path).convert("RGBA")
+            import io
+            import requests
+            if sig_path.startswith("http://") or sig_path.startswith("https://"):
+                resp = requests.get(sig_path, timeout=10)
+                img = Image.open(io.BytesIO(resp.content)).convert("RGBA")
+            else:
+                img = Image.open(sig_path).convert("RGBA")
+
             bg = Image.new("RGB", img.size, (255, 255, 255))
             bg.paste(img, mask=img)
-            temp_sig = sig_path + "_white.jpg"
+            temp_sig = os.path.join(UPLOAD_DIR, f"temp_sig_{uuid.uuid4().hex[:8]}.jpg")
             bg.save(temp_sig, "JPEG")
             elements.append(RLImage(temp_sig, width=3*inch, height=1.5*inch, kind='proportional'))
         except Exception as img_err:
@@ -202,7 +226,11 @@ def generate_pod_pdf_task(
         # Build the PDF
         pdf_doc.build(elements)
         
-        pod_url = f"/api/v1/uploads/{pod_filename}"
+        with open(pod_path, "rb") as f:
+            pod_pdf_bytes = f.read()
+
+        from app.core.blob_storage import upload_blob
+        pod_url = upload_blob(pod_filename, pod_pdf_bytes, "application/pdf")
         
         # We find the pending POD document and update its url if it exists, or create new
         doc = db.query(ShipmentDocument).filter(

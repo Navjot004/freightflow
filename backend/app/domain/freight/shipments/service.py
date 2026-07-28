@@ -505,15 +505,14 @@ def upload_document(db: Session, shipment_id: str, user_id: str, doc_type: str, 
     
     file_ext = file.filename.split('.')[-1] if '.' in file.filename else ''
     filename = f"{shipment_id}_{doc_type.lower()}_{uuid.uuid4().hex[:8]}.{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, filename)
     
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        file_bytes = file.file.read()
+        content_type = file.content_type or "application/octet-stream"
+        from app.core.blob_storage import upload_blob
+        url_path = upload_blob(filename, file_bytes, content_type)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Could not save file")
-        
-    url_path = f"/api/v1/uploads/{filename}"
     
     doc = ShipmentDocument(
         shipment_id=shipment.id,
@@ -547,6 +546,8 @@ def upload_pod_complete(
 ):
     import shutil
     import uuid
+    from app.core.blob_storage import upload_blob
+
     shipment = shipment_repository.get(db=db, id=shipment_id)
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found")
@@ -559,11 +560,9 @@ def upload_pod_complete(
     # Save signature
     sig_ext = signature_file.filename.split('.')[-1] if '.' in signature_file.filename else 'png'
     sig_filename = f"{shipment_id}_sig_{uuid.uuid4().hex[:8]}.{sig_ext}"
-    sig_path = os.path.join(UPLOAD_DIR, sig_filename)
-    with open(sig_path, "wb") as buffer:
-        shutil.copyfileobj(signature_file.file, buffer)
-    
-    sig_url = f"/api/v1/uploads/{sig_filename}"
+    sig_bytes = signature_file.file.read()
+    sig_content_type = signature_file.content_type or "image/png"
+    sig_url = upload_blob(sig_filename, sig_bytes, sig_content_type)
     
     # Save photos
     photo_urls = []
@@ -571,10 +570,10 @@ def upload_pod_complete(
         for photo in photo_files:
             photo_ext = photo.filename.split('.')[-1] if '.' in photo.filename else 'jpg'
             photo_filename = f"{shipment_id}_photo_{uuid.uuid4().hex[:8]}.{photo_ext}"
-            photo_path = os.path.join(UPLOAD_DIR, photo_filename)
-            with open(photo_path, "wb") as buffer:
-                shutil.copyfileobj(photo.file, buffer)
-            photo_urls.append(f"/api/v1/uploads/{photo_filename}")
+            photo_bytes = photo.file.read()
+            photo_content_type = photo.content_type or "image/jpeg"
+            p_url = upload_blob(photo_filename, photo_bytes, photo_content_type)
+            photo_urls.append(p_url)
         
     shipment.receiver_name = receiver_name
     shipment.delivery_notes = delivery_notes
@@ -631,6 +630,14 @@ def upload_pod_complete(
 def generate_bol(db: Session, shipment_id: str):
     from app.tasks.document_tasks import generate_bol_task
     generate_bol_task(shipment_id)
+
+def force_generate_bol(db: Session, shipment_id: str):
+    shipment = shipment_repository.get(db=db, id=shipment_id)
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+    generate_bol(db, shipment.id)
+    db.refresh(shipment)
+    return shipment
 
 def approve_pod(db: Session, shipment_id: str, shipper_id: str):
     shipment = shipment_repository.get(db=db, id=shipment_id)
@@ -748,19 +755,64 @@ def get_my_shipments(db: Session, company_id: str, company_type: str, user_id: s
     else:
         shipments = shipment_repository.get_my_shipments(db=db, company_id=company_id, company_type=company_type)
 
+    from app.domain.fleet.drivers.models import DriverAssignment, DriverAssignmentStatus
     for s in shipments:
         active_assignment = partner_assignment_repository.get_active_assignment(db=db, shipment_id=s.id)
         if active_assignment:
             s.active_partner_assignment = active_assignment
+
+        pending_da = db.query(DriverAssignment).filter(
+            DriverAssignment.shipment_id == s.id,
+            DriverAssignment.status == DriverAssignmentStatus.PENDING
+        ).order_by(DriverAssignment.id.desc()).first()
+        if pending_da:
+            from app.domain.identity.models import User
+            d_user = db.query(User).filter(User.id == pending_da.driver_id).first()
+            s.pending_driver_assignment = {
+                "id": pending_da.id,
+                "driver_id": pending_da.driver_id,
+                "driver_name": f"{d_user.first_name} {d_user.last_name}" if d_user else "Driver",
+                "driver_phone": getattr(d_user, 'phone', None) if d_user else None,
+                "status": pending_da.status.value
+            }
+
+        if not s.bol_url:
+            try:
+                generate_bol(db, s.id)
+            except Exception as e:
+                print(f"Error auto-generating BOL for shipment {s.id}: {e}")
+
         apply_partner_masking(s, company_id, company_type, role_name)
 
     return shipments
+
+def get_shipment_by_id(db: Session, shipment_id: str, company_id: str = None, company_type: str = None, role_name: str = None):
+    shipment = shipment_repository.get(db=db, id=shipment_id)
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+
+    if not shipment.bol_url:
+        try:
+            generate_bol(db, shipment.id)
+            db.refresh(shipment)
+        except Exception as e:
+            print(f"Error auto-generating BOL for shipment {shipment.id}: {e}")
+
+    apply_partner_masking(shipment, company_id, company_type, role_name)
+    return shipment
 
 def get_shipment_for_load(db: Session, load_id: str, company_id: str, company_type: str):
     shipment = shipment_repository.get_by_load(db=db, load_id=load_id)
     if not shipment:
         raise HTTPException(status_code=404, detail="Shipment not found for this load")
         
+    if not shipment.bol_url:
+        try:
+            generate_bol(db, shipment.id)
+            db.refresh(shipment)
+        except Exception as e:
+            print(f"Error auto-generating BOL for shipment {shipment.id}: {e}")
+
     # Verify access
     if company_type == "BROKER":
         load = db.query(Load).filter(Load.id == load_id).first()

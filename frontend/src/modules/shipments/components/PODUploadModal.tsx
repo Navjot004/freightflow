@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ShipmentAPI } from '../api';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -7,6 +7,10 @@ import { Textarea } from '../../../components/ui/textarea';
 import { useToast } from '../../../components/ui/Toast';
 import { X, Upload, Camera } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
+
+const lightThemeCrosshair = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none'%3E%3Cline x1='12' y1='2' x2='12' y2='22' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round'/%3E%3Cline x1='2' y1='12' x2='22' y2='12' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round'/%3E%3Cline x1='12' y1='2' x2='12' y2='22' stroke='%23000000' stroke-width='1.8' stroke-linecap='round'/%3E%3Cline x1='2' y1='12' x2='22' y2='12' stroke='%23000000' stroke-width='1.8' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%23000000' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E") 12 12, crosshair`;
+
+const darkThemeCrosshair = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none'%3E%3Cline x1='12' y1='2' x2='12' y2='22' stroke='%23000000' stroke-width='3.5' stroke-linecap='round'/%3E%3Cline x1='2' y1='12' x2='22' y2='12' stroke='%23000000' stroke-width='3.5' stroke-linecap='round'/%3E%3Cline x1='12' y1='2' x2='12' y2='22' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round'/%3E%3Cline x1='2' y1='12' x2='22' y2='12' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='12' r='2' fill='%23ffffff' stroke='%23000000' stroke-width='1'/%3E%3C/svg%3E") 12 12, crosshair`;
 
 interface PODUploadModalProps {
   isOpen: boolean;
@@ -26,6 +30,19 @@ export function PODUploadModal({ isOpen, onClose, shipmentId, onUploadSuccess }:
   const [osdNotes, setOsdNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [signatureMode, setSignatureMode] = useState<'draw' | 'upload'>('draw');
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+    checkTheme();
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const activeCrosshair = isDarkMode ? darkThemeCrosshair : lightThemeCrosshair;
 
   const sigInputRef = useRef<HTMLInputElement>(null);
   const sigPadRef = useRef<SignatureCanvas>(null);
@@ -143,17 +160,24 @@ export function PODUploadModal({ isOpen, onClose, shipmentId, onUploadSuccess }:
               </div>
 
               {signatureMode === 'draw' ? (
-                <div className="border rounded-lg bg-white overflow-hidden relative">
+                <div 
+                  className="border-2 border-slate-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 overflow-hidden relative group shadow-inner"
+                  style={{ cursor: activeCrosshair }}
+                >
                   <SignatureCanvas 
                     ref={sigPadRef} 
-                    backgroundColor="white"
-                    canvasProps={{className: 'w-full h-40 bg-white cursor-crosshair'}}
+                    backgroundColor={isDarkMode ? "#0f172a" : "#ffffff"}
+                    penColor={isDarkMode ? "#f8fafc" : "#000000"}
+                    canvasProps={{
+                      className: 'w-full h-40',
+                      style: { cursor: activeCrosshair, width: '100%', height: '160px' }
+                    }}
                   />
                   <Button 
                     type="button" 
                     variant="ghost" 
                     size="sm" 
-                    className="absolute top-2 right-2 h-7 px-2 text-xs"
+                    className="absolute top-2 right-2 h-7 px-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 cursor-pointer z-10"
                     onClick={() => sigPadRef.current?.clear()}
                   >
                     Clear

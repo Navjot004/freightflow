@@ -18,6 +18,7 @@ class LoadStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
     EXPIRED = "EXPIRED"
     DISPUTED = "DISPUTED"
+    SUSPENDED = "SUSPENDED"
 
 class Load(Base):
     __tablename__ = "loads"

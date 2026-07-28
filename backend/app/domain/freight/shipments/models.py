@@ -18,6 +18,8 @@ class ShipmentStatus(str, enum.Enum):
     POD_UPLOADED = "POD_UPLOADED"
     COMPLETED = "COMPLETED"
     DISPUTED = "DISPUTED"
+    CANCELLED = "CANCELLED"
+    SUSPENDED = "SUSPENDED"
 
 class DocumentStatus(str, enum.Enum):
     PENDING_REVIEW = "PENDING_REVIEW"

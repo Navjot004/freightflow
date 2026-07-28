@@ -50,5 +50,18 @@ def run():
         except Exception as e:
             print("Error:", e)
 
+    # Ensure PostgreSQL Enum values exist
+    with engine.connect() as conn:
+        conn.execution_options(isolation_level="AUTOCOMMIT")
+        for q in [
+            "ALTER TYPE loadstatus ADD VALUE IF NOT EXISTS 'SUSPENDED';",
+            "ALTER TYPE shipmentstatus ADD VALUE IF NOT EXISTS 'CANCELLED';",
+            "ALTER TYPE shipmentstatus ADD VALUE IF NOT EXISTS 'SUSPENDED';"
+        ]:
+            try:
+                conn.execute(text(q))
+            except Exception:
+                pass
+
 if __name__ == "__main__":
     run()

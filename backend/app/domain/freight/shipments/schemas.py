@@ -28,6 +28,13 @@ class DispatcherAssign(BaseModel):
 class LocationUpdate(BaseModel):
     current_location: str
 
+class PendingDriverAssignmentInfo(BaseModel):
+    id: str
+    driver_id: str
+    driver_name: str
+    driver_phone: Optional[str] = None
+    status: str
+
 class ShipmentResponse(BaseModel):
     id: str
     load_id: str
@@ -65,6 +72,7 @@ class ShipmentResponse(BaseModel):
     dispatcher: Optional[UserResponse] = None
     documents: Optional[list[ShipmentDocumentResponse]] = []
     active_partner_assignment: Optional['PartnerAssignmentResponse'] = None
+    pending_driver_assignment: Optional[PendingDriverAssignmentInfo] = None
 
     class Config:
         from_attributes = True

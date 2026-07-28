@@ -41,6 +41,14 @@ def toggle_user_status(db: Session, user_id: str, admin_id: str):
     user = user_repository.get(db=db, id=user_id)
     if not user: raise HTTPException(404, "User not found")
     user.is_active = not user.is_active
+
+    if not user.is_active:
+        from app.domain.identity.admin.suspension_service import apply_cascading_suspension
+        apply_cascading_suspension(db, user)
+    else:
+        from app.domain.identity.admin.suspension_service import apply_cascading_activation
+        apply_cascading_activation(db, user)
+
     log_action(db, admin_id, "TOGGLE_USER", user_id, {"new_status": user.is_active})
     db.commit()
     return user
@@ -58,5 +66,18 @@ def setup_super_admin(db: Session, user_id: str):
     if not user: raise HTTPException(404, "User not found")
     user.role_id = role.id
     db.commit()
+
+def reset_user_password(db: Session, user_id: str, new_password: str, admin_id: str):
+    from app.core.security import get_password_hash
+    user = user_repository.get(db=db, id=user_id)
+    if not user:
+        raise HTTPException(404, "User not found")
+    if not new_password or len(new_password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters long")
+
+    user.password_hash = get_password_hash(new_password)
+    log_action(db, admin_id, "SUPER_ADMIN_RESET_PASSWORD", user_id, {"user_email": user.email})
+    db.commit()
+    return {"message": f"Password reset successfully for user {user.email}"}
     return {"message": "You are now SUPER_ADMIN"}
 

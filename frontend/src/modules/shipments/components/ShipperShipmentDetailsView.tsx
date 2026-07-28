@@ -294,37 +294,53 @@ export const ShipperShipmentDetailsView: React.FC<ShipperShipmentDetailsViewProp
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 space-y-3.5 text-xs">
-                {/* Assigned Carrier */}
+                {/* Assigned Provider (Broker if brokered, Carrier if direct) */}
                 <div>
-                  <span className="text-muted-foreground block text-[11px]">Carrier / Logistics Provider</span>
-                  {hasAssignedCarrier ? (
-                    <div className="font-bold text-foreground text-sm flex items-center gap-1.5 mt-0.5">
-                      <Building2 className="w-3.5 h-3.5 text-primary" />
-                      {shipment.carrier_company?.name || shipment.carrier_company?.company_name}
+                  <span className="text-muted-foreground block text-[11px]">
+                    {shipment.broker_id || shipment.broker ? 'Fulfillment Broker' : 'Assigned Carrier'}
+                  </span>
+                  {shipment.broker_id || shipment.broker ? (
+                    <div>
+                      <div className="font-bold text-foreground text-sm flex items-center gap-1.5 mt-0.5">
+                        <Building2 className="w-3.5 h-3.5 text-primary" />
+                        {shipment.broker?.company_name || shipment.broker?.name || shipment.broker_company?.name || 'Fulfillment Broker'}
+                      </div>
+                      {(shipment.broker?.email || shipment.broker_company?.email) && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <Mail className="w-3 h-3" /> {shipment.broker?.email || shipment.broker_company?.email}
+                        </div>
+                      )}
+                    </div>
+                  ) : hasAssignedCarrier ? (
+                    <div>
+                      <div className="font-bold text-foreground text-sm flex items-center gap-1.5 mt-0.5">
+                        <Building2 className="w-3.5 h-3.5 text-primary" />
+                        {shipment.carrier_company?.name || shipment.carrier_company?.company_name || shipment.carrier?.company_name || shipment.carrier?.name}
+                      </div>
+                      {shipment.carrier_company?.email && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <Mail className="w-3 h-3" /> {shipment.carrier_company.email}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-amber-600 dark:text-amber-400 font-semibold italic mt-0.5">
-                      Awaiting Carrier Partner Assignment
-                    </div>
-                  )}
-                  {hasAssignedCarrier && shipment.carrier_company?.email && (
-                    <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                      <Mail className="w-3 h-3" /> {shipment.carrier_company.email}
+                      Awaiting Provider Assignment
                     </div>
                   )}
                 </div>
 
-                {/* Assigned Driver */}
+                {/* Dispatch / Driver Privacy Section for Shipper */}
                 <div className="pt-2 border-t">
-                  <span className="text-muted-foreground block text-[11px]">Assigned Driver</span>
-                  {shipment.driver ? (
-                    <div className="font-semibold text-foreground flex items-center gap-1.5 mt-0.5">
-                      <User className="w-3.5 h-3.5 text-emerald-500" />
-                      {shipment.driver.first_name} {shipment.driver.last_name} ({shipment.driver.phone || 'No phone'})
+                  <span className="text-muted-foreground block text-[11px]">Fulfillment Status</span>
+                  {shipment.driver || shipment.driver_name ? (
+                    <div className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mt-0.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      Driver Dispatched & Active
                     </div>
                   ) : (
                     <div className="text-amber-600 dark:text-amber-400 font-medium italic mt-0.5">
-                      Waiting for carrier driver assignment...
+                      Waiting for driver assignment...
                     </div>
                   )}
                 </div>
@@ -533,9 +549,10 @@ export const ShipperShipmentDetailsView: React.FC<ShipperShipmentDetailsViewProp
                 shipmentStatus={shipment.status}
                 originAddress={load.origin_address}
                 destinationAddress={load.destination_address}
-                currentLocationString={shipment.driver ? (shipment.current_location || 'GPS Active') : 'Awaiting Driver Assignment'}
-                hasDriverAssigned={!!shipment.driver_id || !!shipment.driver}
+                currentLocationString={(shipment.driver || shipment.driver_name || shipment.pending_driver_assignment) ? (shipment.current_location || 'Awaiting Driver Trip Start') : 'Awaiting Driver Assignment'}
+                hasDriverAssigned={!!shipment.driver_id || !!shipment.driver || !!shipment.driver_name || !!shipment.pending_driver_assignment}
                 isDriverUser={false}
+                driverName={shipment.driver_name || shipment.driver?.name || shipment.pending_driver_assignment?.driver_name}
               />
             </div>
           </CardContent>
