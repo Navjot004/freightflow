@@ -201,27 +201,32 @@ def generate_pod_pdf_task(
         # Signature
         elements.append(Paragraph("Receiver Signature", styles['SectionHeader']))
         
-        try:
-            from PIL import Image
-            import io
-            import requests
-            if sig_path.startswith("http://") or sig_path.startswith("https://"):
-                resp = requests.get(sig_path, timeout=10)
-                img = Image.open(io.BytesIO(resp.content)).convert("RGBA")
-            else:
-                img = Image.open(sig_path).convert("RGBA")
-
-            bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img, mask=img)
-            temp_sig = os.path.join(UPLOAD_DIR, f"temp_sig_{uuid.uuid4().hex[:8]}.jpg")
-            bg.save(temp_sig, "JPEG")
-            elements.append(RLImage(temp_sig, width=3*inch, height=1.5*inch, kind='proportional'))
-        except Exception as img_err:
-            print("Image processing failed:", img_err)
+        target_sig = sig_url or sig_path
+        if target_sig:
             try:
-                elements.append(RLImage(sig_path, width=3*inch, height=1.5*inch, kind='proportional'))
-            except:
-                pass
+                from PIL import Image
+                import io
+                import requests
+                if target_sig.startswith("http://") or target_sig.startswith("https://"):
+                    resp = requests.get(target_sig, timeout=10)
+                    img = Image.open(io.BytesIO(resp.content)).convert("RGBA")
+                else:
+                    local_filename = os.path.basename(target_sig)
+                    local_path = os.path.join(UPLOAD_DIR, local_filename)
+                    if os.path.exists(local_path):
+                        img = Image.open(local_path).convert("RGBA")
+                    elif os.path.exists(target_sig):
+                        img = Image.open(target_sig).convert("RGBA")
+                    else:
+                        raise FileNotFoundError(f"Signature image not found at {target_sig}")
+
+                bg = Image.new("RGB", img.size, (255, 255, 255))
+                bg.paste(img, mask=img)
+                temp_sig = os.path.join(UPLOAD_DIR, f"temp_sig_{uuid.uuid4().hex[:8]}.jpg")
+                bg.save(temp_sig, "JPEG")
+                elements.append(RLImage(temp_sig, width=3*inch, height=1.5*inch, kind='proportional'))
+            except Exception as img_err:
+                print("Image processing failed:", img_err)
             
         # Build the PDF
         pdf_doc.build(elements)
