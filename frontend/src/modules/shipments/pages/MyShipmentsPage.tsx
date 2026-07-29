@@ -508,9 +508,14 @@ export default function MyShipmentsPage() {
 
                       {/* OWNER OPERATOR ACTIONS */}
                       {isOwnerOperator && (s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load?.status === 'TENDER_ACCEPTED') && (
-                        <Button size="sm" onClick={() => handleSelfAssign(s.id)}>
-                          Self Assign
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={() => handleSelfAssign(s.id)}>
+                            Self Assign
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleOpenAssignPartner(s)} className="border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-semibold dark:hover:bg-emerald-950/30">
+                            Subcontract to Partner
+                          </Button>
+                        </div>
                       )}
 
                       {user?.company?.type === 'SHIPPER' && s.status === 'POD_UPLOADED' && (
@@ -917,9 +922,14 @@ export default function MyShipmentsPage() {
                             </>
                           )}
                           {(s.status === 'WAITING_FOR_DRIVER_ASSIGNMENT' || s.load.status === 'TENDER_ACCEPTED') && isOwnerOperator && (
-                            <Button size="sm" onClick={() => handleSelfAssign(s.id)}>
-                              Self Assign
-                            </Button>
+                            <div className="flex items-center gap-1.5">
+                              <Button size="sm" onClick={() => handleSelfAssign(s.id)}>
+                                Self Assign
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleOpenAssignPartner(s)} className="border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-semibold dark:hover:bg-emerald-950/30">
+                                Subcontract
+                              </Button>
+                            </div>
                           )}
                           {user?.company?.type === 'SHIPPER' && s.status === 'POD_UPLOADED' && (
                             <>
@@ -1037,11 +1047,27 @@ export default function MyShipmentsPage() {
                   <Label>Notes (Optional)</Label>
                   <Input value={assignmentNotes} onChange={e => setAssignmentNotes(e.target.value)} placeholder="Special instructions" />
                 </div>
+                {(() => {
+                  const origRate = assignPartnerShipment.shipper_rate || assignPartnerShipment.carrier_rate || assignPartnerShipment.load?.rate || 0;
+                  const numPayRate = Number(assignmentRate) || 0;
+                  if (origRate > 0 && numPayRate > origRate) {
+                    return (
+                      <div className="text-xs flex items-center gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 font-semibold">
+                        ⚠️ Offered rate exceeds your contract rate. Negative margins are not allowed.
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="flex justify-end gap-3 mt-6">
                   <Button type="button" variant="outline" onClick={() => setAssignPartnerShipment(null)} disabled={isSubmitting}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={!selectedPartner || isSubmitting}>
+                  <Button type="submit" disabled={!selectedPartner || isSubmitting || (() => {
+                    const origRate = assignPartnerShipment.shipper_rate || assignPartnerShipment.carrier_rate || assignPartnerShipment.load?.rate || 0;
+                    const numPayRate = Number(assignmentRate) || 0;
+                    return origRate > 0 && numPayRate > origRate;
+                  })()}>
                     {isSubmitting ? 'Assigning...' : 'Assign Partner'}
                   </Button>
                 </div>

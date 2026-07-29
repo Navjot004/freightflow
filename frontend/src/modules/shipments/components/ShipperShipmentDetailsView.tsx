@@ -5,6 +5,7 @@ import { StatusBadge } from '../../../components/ui/StatusBadge';
 import { LiveTrackingMap } from '../../../components/freight/LiveTrackingMap';
 import { toApiUrl } from '../../../core/api';
 import { useToast } from '../../../components/ui/Toast';
+import { useAuthStore } from '../../../store/authStore';
 import { ShipmentAPI } from '../api';
 import {
   MapPin, Truck, Package, Clock, DollarSign, FileText, CheckCircle2,
@@ -96,14 +97,42 @@ export const ShipperShipmentDetailsView: React.FC<ShipperShipmentDetailsViewProp
     { title: 'Delivered', desc: 'POD verified' },
   ];
 
-  const rateAmount =
-    shipment.agreed_rate ??
-    shipment.rate ??
-    shipment.agreed_price ??
-    load.agreed_rate ??
-    load.rate ??
-    load.target_rate ??
-    0;
+  const user = useAuthStore(state => state.user);
+  const companyType = user?.company?.type;
+  const companyId = user?.company_id || user?.company?.id;
+
+  const getEffectiveRate = () => {
+    // 1. If Subcontracted Partner (Owner Operator or Carrier hired by Carrier)
+    if (shipment.partner_rate && (companyType === 'OWNER_OPERATOR' || companyType === 'CARRIER' || shipment.carrier_id === companyId)) {
+      return shipment.partner_rate;
+    }
+    
+    // 2. If Carrier / Owner-Operator / Driver (Primary Carrier hired by Shipper or Broker)
+    if (companyType === 'CARRIER' || companyType === 'OWNER_OPERATOR' || user?.role?.name === 'DRIVER') {
+      return shipment.carrier_rate ?? shipment.partner_rate ?? shipment.shipper_rate ?? load.rate ?? 0;
+    }
+
+    // 3. If Broker
+    if (companyType === 'BROKER') {
+      return shipment.carrier_rate ?? shipment.shipper_rate ?? load.rate ?? 0;
+    }
+
+    // 4. If Shipper
+    if (companyType === 'SHIPPER') {
+      return shipment.shipper_rate ?? load.rate ?? 0;
+    }
+
+    // Fallback order
+    return (
+      shipment.partner_rate ??
+      shipment.carrier_rate ??
+      shipment.shipper_rate ??
+      load.rate ??
+      0
+    );
+  };
+
+  const rateAmount = getEffectiveRate();
 
   const hasAssignedCarrier =
     shipment.carrier_company &&
@@ -374,11 +403,34 @@ export const ShipperShipmentDetailsView: React.FC<ShipperShipmentDetailsViewProp
               </CardHeader>
               <CardContent className="p-4 space-y-3.5 text-xs">
                 <div>
-                  <span className="text-muted-foreground block text-[11px]">Total Agreed Shipment Rate</span>
+                  <span className="text-muted-foreground block text-[11px]">
+                    {companyType === 'CARRIER' || companyType === 'OWNER_OPERATOR' || user?.role?.name === 'DRIVER'
+                      ? 'Agreed Pay Rate'
+                      : companyType === 'BROKER'
+                      ? 'Agreed Carrier Pay Rate'
+                      : 'Total Agreed Shipment Rate'}
+                  </span>
                   <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
                     ${typeof rateAmount === 'number' ? rateAmount.toLocaleString('en-US', { minimumFractionDigits: 2 }) : rateAmount}
                   </div>
                 </div>
+
+                {companyType === 'BROKER' && shipment.shipper_rate && shipment.carrier_rate && (
+                  <div className="p-2 rounded-xl bg-muted/50 border text-[11px] space-y-1 font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Shipper Contract Rate:</span>
+                      <span className="font-semibold">${shipment.shipper_rate.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Carrier Pay Rate:</span>
+                      <span className="font-semibold">${shipment.carrier_rate.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-1 font-bold">
+                      <span className="text-emerald-600">Retained Margin:</span>
+                      <span className="text-emerald-600">${(shipment.shipper_rate - shipment.carrier_rate).toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="pt-2 border-t space-y-2">
                   <div className="flex justify-between items-center text-xs">

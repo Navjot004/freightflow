@@ -49,12 +49,24 @@ def generate_bol_endpoint(
 def assign_partner(
     shipment_id: str,
     assignment_in: schemas.PartnerAssignmentCreate,
-    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER"])),
+    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER", "OWNER_OPERATOR"])),
     db: Session = Depends(get_db)
 ):
     """Assign a transportation partner (Carrier or Owner Operator) to a shipment."""
-    if current_user.company.type != "BROKER":
-        raise HTTPException(status_code=403, detail="Only Brokers can assign transportation partners.")
+    if current_user.company.type not in ["BROKER", "CARRIER", "OWNER_OPERATOR"]:
+        raise HTTPException(status_code=403, detail="Only Brokers, Carriers, and Owner-Operators can assign transportation partners.")
+    return service.assign_partner(db, shipment_id, current_user.company_id, assignment_in)
+
+@router.post("/shipments/{shipment_id}/sub-tender", response_model=schemas.PartnerAssignmentResponse)
+def sub_tender(
+    shipment_id: str,
+    assignment_in: schemas.PartnerAssignmentCreate,
+    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER", "OWNER_OPERATOR"])),
+    db: Session = Depends(get_db)
+):
+    """Sub-tender a shipment to a downstream partner. Alias for assign-partner."""
+    if current_user.company.type not in ["BROKER", "CARRIER", "OWNER_OPERATOR"]:
+        raise HTTPException(status_code=403, detail="Only Brokers, Carriers, and Owner-Operators can sub-tender.")
     return service.assign_partner(db, shipment_id, current_user.company_id, assignment_in)
 
 @router.post("/partner-assignments/{assignment_id}/accept", response_model=schemas.PartnerAssignmentResponse)
@@ -86,12 +98,12 @@ def get_my_partner_assignments(
 @router.post("/partner-assignments/{assignment_id}/cancel", response_model=schemas.PartnerAssignmentResponse)
 def cancel_partner_assignment(
     assignment_id: str,
-    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER"])),
+    current_user: User = Depends(RequireRole(["COMPANY_ADMIN", "DISPATCHER", "OWNER_OPERATOR"])),
     db: Session = Depends(get_db)
 ):
-    """Broker cancels a pending partner assignment."""
-    if current_user.company.type != "BROKER":
-        raise HTTPException(status_code=403, detail="Only Brokers can cancel partner assignments.")
+    """Cancel a pending partner assignment (by the assigner)."""
+    if current_user.company.type not in ["BROKER", "CARRIER", "OWNER_OPERATOR"]:
+        raise HTTPException(status_code=403, detail="Only the assigning party can cancel partner assignments.")
     return service.cancel_partner_assignment(db, assignment_id, current_user.company_id)
 
 @router.post("/shipments/{shipment_id}/assign-driver", response_model=schemas.ShipmentResponse)

@@ -36,10 +36,49 @@ def assign_partner(db: Session, shipment_id: str, broker_id: str, assignment_in:
     
     if not partner or partner.status != VerificationStatus.VERIFIED:
         raise HTTPException(status_code=400, detail="Invalid or unverified Partner")
-        
+    
+    # --- Circular Sub-Tendering Prevention ---
+    if assignment_in.partner_id == broker_id:
+        raise HTTPException(status_code=400, detail="Cannot sub-tender to yourself")
+    
     shipment = shipment_repository.get(db=db, id=shipment_id)
     if not shipment or (shipment.broker_id != broker_id and shipment.carrier_id != broker_id):
         raise HTTPException(status_code=404, detail="Shipment not found or access denied")
+
+    load = db.query(Load).filter(Load.id == shipment.load_id).first()
+    
+    # Block assigning back to original shipper
+    if load and assignment_in.partner_id == load.shipper_id:
+        raise HTTPException(status_code=400, detail="Cannot sub-tender back to the original Shipper")
+    
+    # Block assigning back to the shipment's broker
+    if shipment.broker_id and assignment_in.partner_id == shipment.broker_id:
+        raise HTTPException(status_code=400, detail="Cannot sub-tender back to the originating Broker")
+    
+    # Block assigning back to the shipment's current carrier (if a different party is sub-tendering)
+    if shipment.carrier_id and assignment_in.partner_id == shipment.carrier_id and broker_id != shipment.carrier_id:
+        raise HTTPException(status_code=400, detail="Cannot sub-tender to the already-assigned Carrier")
+    
+    # --- Negative Margin Validation ---
+    if assignment_in.agreed_rate is not None:
+        if assignment_in.agreed_rate <= 0:
+            raise HTTPException(status_code=400, detail="Offered rate must be greater than zero")
+        
+        # Determine the incoming contract rate for the assigning party
+        if shipment.broker_id == broker_id:
+            # Broker is assigning — their incoming rate is shipper_rate
+            incoming_rate = shipment.shipper_rate or (load.rate if load else None)
+        elif shipment.carrier_id == broker_id:
+            # Carrier is sub-tendering — their incoming rate is carrier_rate
+            incoming_rate = shipment.carrier_rate or shipment.shipper_rate or (load.rate if load else None)
+        else:
+            incoming_rate = None
+        
+        if incoming_rate and assignment_in.agreed_rate > incoming_rate:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Offered rate (${assignment_in.agreed_rate}) cannot exceed your incoming contract rate (${incoming_rate}). This would create a negative margin."
+            )
         
     active_assignment = partner_assignment_repository.get_active_assignment(db=db, shipment_id=shipment_id)
     if active_assignment:
@@ -70,6 +109,7 @@ def assign_partner(db: Session, shipment_id: str, broker_id: str, assignment_in:
     db.refresh(assignment)
     return assignment
 
+
 def accept_partner_assignment(db: Session, assignment_id: str, partner_id: str):
     from app.domain.identity.models import CompanyType
     assignment = partner_assignment_repository.get_by_id_and_partner(db=db, assignment_id=assignment_id, partner_id=partner_id)
@@ -86,11 +126,11 @@ def accept_partner_assignment(db: Session, assignment_id: str, partner_id: str):
     shipment.carrier_id = assignment.partner_id
     
     if assignment.agreed_rate:
-        if shipment.broker_id:
-            # If assigned by Broker, this is the Carrier Pay Rate
+        if assignment.broker_id == shipment.broker_id and shipment.broker_id is not None:
+            # First hop: Broker is assigning to a Carrier — this is the Carrier Pay Rate
             shipment.carrier_rate = assignment.agreed_rate
         else:
-            # If assigned by Carrier, this is the Partner Pay Rate
+            # Second+ hop: Carrier/OO is sub-tendering to a downstream partner — this is the Partner Pay Rate
             shipment.partner_rate = assignment.agreed_rate
     
     # Check if OWNER_OPERATOR for auto self-assign
@@ -712,22 +752,47 @@ def apply_partner_masking(shipment: Shipment, company_id: str, company_type: str
         # 1. Financial Privacy (Rate Masking) - Hide Shipper Contract Rate from Carrier/Driver
         shipment.shipper_rate = None
         
-        # If subcontracted partner: hide Prime Carrier rate from Subcontracted Owner-Op
+        # If subcontracted partner: hide Prime Carrier rate from Subcontracted Owner-Op/Carrier
+        # Check via active_partner_assignment OR via partner_rate existence
         active_assignment = getattr(shipment, "active_partner_assignment", None)
+        is_downstream_sub = False
+        
         if active_assignment and getattr(active_assignment, "partner_id", None) == company_id:
+            is_downstream_sub = True
+        elif shipment.partner_rate and shipment.carrier_id == company_id:
+            # partner_rate is set and this company is the assigned carrier — they are the downstream sub
+            is_downstream_sub = True
+        
+        if is_downstream_sub:
             shipment.carrier_rate = None
         
         # 2. Partner Abstraction (Disintermediation Protection)
-        # If shipment was brokered, mask Shipper corporate name as "Client (via Broker Name)"
-        if shipment.broker_id and shipment.load and shipment.load.shipper:
-            broker_name = shipment.broker.name if shipment.broker else "Broker"
-            from copy import copy
-            masked_shipper = copy(shipment.load.shipper)
-            masked_shipper.name = f"Client (via {broker_name})"
-            masked_shipper.email = "protected@freightflow.com"
-            masked_shipper.phone = "Protected Line"
-            shipment.load.shipper = masked_shipper
+        # Mask Shipper corporate name as "Client (via [Parent Partner Name])"
+        if shipment.load and shipment.load.shipper:
+            parent_name = None
+            if shipment.broker_id:
+                # Brokered shipment: mask as "Client (via Broker Name)"
+                parent_name = shipment.broker.name if shipment.broker else "Broker"
+            elif is_downstream_sub:
+                # Direct carrier sub-tender (no broker): mask shipper for downstream partner
+                # The "parent" is whoever sub-tendered to them — look up from assignment
+                if active_assignment and active_assignment.broker:
+                    parent_name = active_assignment.broker.name
+                else:
+                    parent_name = "Partner"
+            
+            if parent_name:
+                from copy import copy
+                masked_shipper = copy(shipment.load.shipper)
+                masked_shipper.name = f"Client (via {parent_name})"
+                masked_shipper.email = "protected@freightflow.com"
+                masked_shipper.phone = "Protected Line"
+                shipment.load.shipper = masked_shipper
 
+    elif company_type == "BROKER":
+        # Broker should NOT see the downstream sub-contractor's rate
+        shipment.partner_rate = None
+        
     elif company_type == "SHIPPER":
         # Shipper should NOT see Carrier's buy rate or subcontractor rates
         shipment.carrier_rate = None
